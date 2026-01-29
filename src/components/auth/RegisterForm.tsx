@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff, Mail, User, Lock, CheckCircle2, Shield, Zap, Globe2, UserPlus, Gift, Loader2, ArrowRight, ArrowLeft, Sparkles, Building2, IdCard } from "lucide-react";
+import { Eye, EyeOff, Mail, User, Lock, CheckCircle2, Shield, Zap, Globe2, Gift, Loader2, ArrowRight, ArrowLeft, Building2, IdCard, Calendar } from "lucide-react";
 import http from "@/lib/http";
 import { setTokens } from "@/lib/token";
 import { toast } from "sonner";
@@ -100,6 +100,7 @@ function formatCNPJ(value: string): string {
 const schema = z
     .object({
         name: z.string().min(3, "Informe seu nome").transform((v) => v.trim()),
+        age: z.coerce.number().min(18, "Você deve ter pelo menos 18 anos").max(120, "Idade inválida"),
         email: z.string().email("E-mail inválido").transform((v) => v.trim().toLowerCase()),
         password: z.string().min(8, "Mínimo 8 caracteres"),
         confirm: z.string().min(8, "Confirme sua senha"),
@@ -196,6 +197,7 @@ function RegisterPageInner(): React.JSX.Element {
         resolver,
         defaultValues: {
             name: "",
+            age: undefined,
             email: "",
             password: "",
             confirm: "",
@@ -254,6 +256,7 @@ function RegisterPageInner(): React.JSX.Element {
                 email: v.email,
                 password: v.password,
                 name: v.name,
+                age: v.age,
                 type: v.customerType,
             };
 
@@ -283,7 +286,7 @@ function RegisterPageInner(): React.JSX.Element {
                 "SameSite=Lax",
             ].join("; ");
 
-            toast.success("Conta criada! Bem-vindo(a). KYC LEVEL 1 ativado!");
+            toast.success("Conta criada! Bem-vindo(a).");
             router.replace("/customer/dashboard");
         } catch (e: unknown) {
             const status = getHttpStatus(e);
@@ -342,32 +345,24 @@ function RegisterPageInner(): React.JSX.Element {
                 <div className="flex w-full max-w-6xl items-center gap-16">
                     <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:gap-8">
                         <div>
-                            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/5 border border-primary/10 px-4 py-1.5 text-sm font-black text-primary">
-                                <Sparkles className="h-4 w-4" />
-                                KYC Automatico
-                            </div>
                             <h1 className="text-4xl font-black text-slate-900 xl:text-5xl tracking-tightest">
                                 Crie sua conta
-                                <br />
-                                <span className="text-primary">
-                                    com KYC LEVEL 1
-                                </span>
                             </h1>
                             <p className="mt-4 text-lg text-slate-500 font-medium">
-                                Cadastre-se com CPF ou CNPJ e ganhe automaticamente LEVEL 1 KYC (R$ 30k-50k/mes).
+                                Cadastre-se para começar a operar.
                             </p>
                         </div>
 
                         <div className="space-y-4">
                             <FeatureItem
                                 icon={<CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-                                title="KYC LEVEL 1 automatico"
+                                title="Registro rápido"
                                 desc="Valide seu documento e comece a operar"
                             />
                             <FeatureItem
                                 icon={<Zap className="h-5 w-5 text-yellow-500" />}
                                 title="Limites progressivos"
-                                desc="Upgrade para LEVEL 2 e 3 quando precisar"
+                                desc="Aumente seus limites quando precisar"
                             />
                             <FeatureItem
                                 icon={<Globe2 className="h-5 w-5 text-primary" />}
@@ -446,11 +441,52 @@ function RegisterPageInner(): React.JSX.Element {
                                         )}
                                     </div>
 
+                                    {/* Full Name */}
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="name" className="text-sm font-black text-slate-900">
+                                            Nome completo
+                                        </Label>
+                                        <div className="relative">
+                                            <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                                            <Input
+                                                id="name"
+                                                className="h-12 rounded-2xl border-black/[0.05] bg-white/60 pl-10 text-slate-900 placeholder:text-slate-500 transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                placeholder="Seu nome completo"
+                                                {...form.register("name")}
+                                            />
+                                        </div>
+                                        {form.formState.errors.name && (
+                                            <p className="text-xs text-red-500 font-medium">{form.formState.errors.name.message}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Age */}
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="age" className="text-sm font-black text-slate-900">
+                                            Idade
+                                        </Label>
+                                        <div className="relative">
+                                            <Calendar className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                                            <Input
+                                                id="age"
+                                                type="number"
+                                                min="18"
+                                                max="120"
+                                                className="h-12 rounded-2xl border-black/[0.05] bg-white/60 pl-10 text-slate-900 placeholder:text-slate-500 transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                placeholder="Sua idade"
+                                                {...form.register("age")}
+                                            />
+                                        </div>
+                                        {form.formState.errors.age && (
+                                            <p className="text-xs text-red-500 font-medium">{form.formState.errors.age.message}</p>
+                                        )}
+                                    </div>
+
                                     {/* CPF Field (only for PF) */}
                                     {customerType === "PF" && (
                                         <div className="grid gap-2">
                                             <Label htmlFor="cpf" className="text-sm font-black text-slate-900">
-                                                CPF <span className="text-emerald-500">(obter LEVEL 1)</span>
+                                                CPF
                                             </Label>
                                             <div className="relative">
                                                 <IdCard className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -468,9 +504,6 @@ function RegisterPageInner(): React.JSX.Element {
                                             {form.formState.errors.cpf && (
                                                 <p className="text-xs text-red-500 font-medium">{form.formState.errors.cpf.message}</p>
                                             )}
-                                            <p className="text-xs text-slate-500 font-medium">
-                                                CPF valido = R$ 30k/mes automaticamente
-                                            </p>
                                         </div>
                                     )}
 
@@ -478,7 +511,7 @@ function RegisterPageInner(): React.JSX.Element {
                                     {customerType === "PJ" && (
                                         <div className="grid gap-2">
                                             <Label htmlFor="cnpj" className="text-sm font-black text-slate-900">
-                                                CNPJ <span className="text-emerald-500">(obter LEVEL 1)</span>
+                                                CNPJ
                                             </Label>
                                             <div className="relative">
                                                 <Building2 className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -496,30 +529,10 @@ function RegisterPageInner(): React.JSX.Element {
                                             {form.formState.errors.cnpj && (
                                                 <p className="text-xs text-red-500 font-medium">{form.formState.errors.cnpj.message}</p>
                                             )}
-                                            <p className="text-xs text-slate-500 font-medium">
-                                                CNPJ valido = R$ 50k/mes automaticamente
-                                            </p>
                                         </div>
                                     )}
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="name" className="text-sm font-black text-slate-900">
-                                            Nome completo
-                                        </Label>
-                                        <div className="relative">
-                                            <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                                            <Input
-                                                id="name"
-                                                className="h-12 rounded-2xl border-black/[0.05] bg-white/60 pl-10 text-slate-900 placeholder:text-slate-500 transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                                placeholder="Seu nome"
-                                                {...form.register("name")}
-                                            />
-                                        </div>
-                                        {form.formState.errors.name && (
-                                            <p className="text-xs text-red-500 font-medium">{form.formState.errors.name.message}</p>
-                                        )}
-                                    </div>
-
+                                    {/* Email */}
                                     <div className="grid gap-2">
                                         <Label htmlFor="email" className="text-sm font-black text-slate-900">
                                             E-mail
@@ -696,7 +709,7 @@ function RegisterPageInner(): React.JSX.Element {
                                         className="btn-premium h-12 rounded-2xl font-black text-base disabled:opacity-50"
                                         aria-busy={loading}
                                     >
-                                        {loading ? 'Criando conta...' : 'Criar conta com KYC LEVEL 1'}
+                                        {loading ? 'Criando conta...' : 'Criar conta'}
                                         {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
                                     </motion.button>
 
@@ -722,7 +735,7 @@ function RegisterPageInner(): React.JSX.Element {
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-                                KYC automatico
+                                Registro verificado
                             </div>
                         </div>
                     </div>
