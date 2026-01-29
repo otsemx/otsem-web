@@ -137,7 +137,14 @@ const Footer = () => {
 
         <div className="mt-12 sm:mt-16 flex flex-col items-center justify-between gap-3 border-t border-foreground/[0.05] pt-6 sm:pt-8 sm:flex-row">
           <p className="text-[11px] sm:text-[12px] font-medium text-slate-400">
-            © 2026 Otsem Pay. Todos os direitos reservados.
+            © 2026 Otsem Pay. Todos os direitos reservados.{" "}
+            <button
+              type="button"
+              onClick={() => openExternalUrl("https://linktr.ee/0xdeni")}
+              className="text-primary hover:underline transition-colors cursor-pointer bg-transparent border-none p-0 font-medium"
+            >
+              0xdeni
+            </button>
           </p>
           <p className="text-[11px] sm:text-[12px] font-medium text-slate-400">
             CNPJ: 12.474.440/0001-60
