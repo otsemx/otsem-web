@@ -23,7 +23,7 @@ interface AuthContextData {
 }
 
 interface LoginResponse {
-    access_token: string;
+    accessToken: string;
     user: User;
 }
 
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 { headers: { "X-Anonymous": "true" } }
             );
 
-            const { access_token: accessToken, user: userData } = loginResponse.data;
+            const { accessToken, user: userData } = loginResponse.data;
 
             if (!accessToken) {
                 throw new Error("Token de acesso não recebido da API");
