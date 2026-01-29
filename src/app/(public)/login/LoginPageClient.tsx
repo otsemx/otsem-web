@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 
 import { useAuth } from '@/contexts/auth-context';
+import { TwoFactorVerify } from '@/components/auth/TwoFactorVerify';
 
 const loginSchema = z.object({
     email: z.string().min(1, 'Informe seu e-mail').email('E-mail inválido').transform((v) => v.trim().toLowerCase()),
@@ -52,7 +53,7 @@ function LoginPageInner(): React.JSX.Element {
     const router = useRouter();
     const sp = useSearchParams();
     const next = safeNext(sp ? sp.get('next') : undefined);
-    const { login, user } = useAuth();
+    const { login, verifyTwoFactor, user } = useAuth();
 
     const {
         register,
@@ -64,17 +65,31 @@ function LoginPageInner(): React.JSX.Element {
     });
 
     const [showPw, setShowPw] = React.useState(false);
+    const [requires2FA, setRequires2FA] = React.useState(false);
+    const [tempToken, setTempToken] = React.useState('');
+    const [userEmail, setUserEmail] = React.useState('');
+    const [pendingUser, setPendingUser] = React.useState<any>(null);
 
     const onSubmit: SubmitHandler<LoginForm> = async (values) => {
         try {
-            const loggedInUser = await login(values.email, values.password);
+            const result = await login(values.email, values.password);
+
+            // Check if 2FA is required
+            if ('requiresTwoFactor' in result && result.requiresTwoFactor) {
+                setRequires2FA(true);
+                setTempToken(result.tempToken);
+                setUserEmail(values.email);
+                setPendingUser(result.user);
+                return;
+            }
+
             toast.success('Bem-vindo de volta!');
 
             // Redirect based on role if no 'next' parameter
             if (sp && sp.get('next')) {
                 router.replace(next);
             } else {
-                const dashboardPath = loggedInUser.role === "ADMIN" ? "/admin/dashboard" : "/customer/dashboard";
+                const dashboardPath = result.role === "ADMIN" ? "/admin/dashboard" : "/customer/dashboard";
                 router.replace(dashboardPath);
             }
         } catch (error) {
@@ -82,6 +97,65 @@ function LoginPageInner(): React.JSX.Element {
             toast.error(message);
         }
     };
+
+    const handle2FAVerify = async (code: string, isBackupCode: boolean) => {
+        try {
+            const loggedInUser = await verifyTwoFactor(code, tempToken, isBackupCode);
+            toast.success('Autenticação concluída!');
+
+            // Redirect based on role
+            if (sp && sp.get('next')) {
+                router.replace(next);
+            } else {
+                const dashboardPath = loggedInUser.role === "ADMIN" ? "/admin/dashboard" : "/customer/dashboard";
+                router.replace(dashboardPath);
+            }
+        } catch (error) {
+            throw error; // Let TwoFactorVerify handle the error display
+        }
+    };
+
+    const handleCancel2FA = () => {
+        setRequires2FA(false);
+        setTempToken('');
+        setUserEmail('');
+        setPendingUser(null);
+    };
+
+    // Show 2FA verification if required
+    if (requires2FA) {
+        return (
+            <div className="relative min-h-screen w-full overflow-hidden bg-white">
+                <div className="pointer-events-none absolute inset-0 -z-10">
+                    <motion.div
+                        animate={{ x: [0, 40, 0], y: [0, -30, 0], scale: [1, 1.15, 1] }}
+                        transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-primary/5 blur-[120px] rounded-full"
+                    />
+                </div>
+
+                <div className="fixed top-6 left-6 z-50">
+                    <motion.button
+                        onClick={handleCancel2FA}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-2xl liquid-glass text-slate-900/70 hover:text-slate-900 font-bold text-sm transition-colors"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Voltar
+                    </motion.button>
+                </div>
+
+                <div className="flex min-h-screen w-full items-center justify-center px-4 py-24">
+                    <TwoFactorVerify
+                        onVerify={handle2FAVerify}
+                        onCancel={handleCancel2FA}
+                        email={userEmail}
+                    />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen w-full overflow-hidden bg-white">

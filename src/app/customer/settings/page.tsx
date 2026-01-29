@@ -12,6 +12,7 @@ import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import http from "@/lib/http";
 import { useAuth } from "@/contexts/auth-context";
+import { TwoFactorSetup } from "@/components/auth/TwoFactorSetup";
 
 type CustomerData = {
     id: string;
@@ -288,20 +289,10 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-2xl p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-lg font-semibold text-foreground">Autenticação em 2 Fatores</h2>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Adicione uma camada extra de segurança à sua conta
-                                </p>
-                            </div>
-                            <Button variant="outline" disabled className="gap-2">
-                                <Lock className="w-4 h-4" />
-                                Em breve
-                            </Button>
-                        </div>
-                    </div>
+                    <TwoFactorSetup
+                        user={customer as any}
+                        onSuccess={() => loadCustomer()}
+                    />
                 </TabsContent>
 
                 <TabsContent value="notifications" className="space-y-6">

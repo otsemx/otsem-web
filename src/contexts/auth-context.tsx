@@ -13,12 +13,21 @@ interface User {
     role: "ADMIN" | "CUSTOMER";
     name?: string;
     spreadValue?: number;
+    twoFactorEnabled?: boolean;
+    twoFactorMethod?: 'TOTP' | null;
+}
+
+interface TwoFactorRequired {
+    requiresTwoFactor: true;
+    tempToken: string;
+    user: User;
 }
 
 interface AuthContextData {
     user: User | null;
     loading: boolean;
-    login: (email: string, password: string) => Promise<User>;
+    login: (email: string, password: string) => Promise<User | TwoFactorRequired>;
+    verifyTwoFactor: (code: string, tempToken: string, isBackupCode?: boolean) => Promise<User>;
     logout: () => void;
 }
 
@@ -135,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loadUser();
     }, []);
 
-    async function login(email: string, password: string) {
+    async function login(email: string, password: string): Promise<User | TwoFactorRequired> {
         try {
             const loginResponse = await httpClient.post<LoginResponse>(
                 "/auth/login",
@@ -159,6 +168,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 throw new Error("Cargo do usuário não identificado");
             }
 
+            // Check if 2FA is required
+            if (userData.twoFactorEnabled) {
+                const tempUser: User = {
+                    id: payload.sub,
+                    customerId: payload.customerId || userData?.customerId,
+                    email: payload.email || userData.email,
+                    role: role,
+                    name: userData.name || undefined,
+                    spreadValue: userData.spreadValue,
+                    twoFactorEnabled: true,
+                    twoFactorMethod: userData.twoFactorMethod || 'TOTP',
+                };
+
+                return {
+                    requiresTwoFactor: true,
+                    tempToken: accessToken,
+                    user: tempUser,
+                };
+            }
+
             setTokens(accessToken, "");
 
             let customerId = payload.customerId || userData?.customerId;
@@ -166,7 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Se for CUSTOMER e não tiver customerId, busca na API
             if (role === "CUSTOMER" && !customerId) {
                 try {
-                    // Espera um pouco para garantir que o interceptor de token funcione ou passa o token manualmente
                     const response = await httpClient.get("/customers/me", {
                         headers: { Authorization: `Bearer ${accessToken}` }
                     });
@@ -178,20 +206,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
             }
 
-            const newUser = {
+            const newUser: User = {
                 id: payload.sub,
                 customerId: customerId,
                 email: payload.email || userData.email,
                 role: role,
                 name: userData.name || undefined,
                 spreadValue: userData.spreadValue,
+                twoFactorEnabled: userData.twoFactorEnabled,
+                twoFactorMethod: userData.twoFactorMethod,
             };
 
             setUser(newUser);
             return newUser;
         } catch (error) {
             console.error("Erro no login:", error);
-            
+
             // Se for erro de rede já tratado pelo interceptor, propaga a mensagem
             if (error && typeof error === "object" && "message" in (error as any)) {
                 const msg = (error as any).message;
@@ -210,6 +240,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    async function verifyTwoFactor(code: string, tempToken: string, isBackupCode: boolean = false): Promise<User> {
+        try {
+            const response = await httpClient.post<LoginResponse>(
+                "/auth/2fa/verify-login",
+                { code, isBackupCode },
+                { headers: { Authorization: `Bearer ${tempToken}` } }
+            );
+
+            const { accessToken, user: userData } = response.data.data;
+
+            if (!accessToken) {
+                throw new Error("Token de acesso não recebido da API");
+            }
+
+            const payload = decodeJwt(accessToken);
+            if (!payload) {
+                throw new Error("Token inválido");
+            }
+
+            const role = payload.role || userData?.role;
+            if (!role) {
+                throw new Error("Cargo do usuário não identificado");
+            }
+
+            setTokens(accessToken, "");
+
+            let customerId = payload.customerId || userData?.customerId;
+
+            if (role === "CUSTOMER" && !customerId) {
+                try {
+                    const customerResponse = await httpClient.get("/customers/me");
+                    if (customerResponse.data && customerResponse.data.id) {
+                        customerId = customerResponse.data.id;
+                    }
+                } catch (error) {
+                    console.warn("Não foi possível buscar dados do customer:", error);
+                }
+            }
+
+            const newUser: User = {
+                id: payload.sub,
+                customerId: customerId,
+                email: payload.email || userData.email,
+                role: role,
+                name: userData.name || undefined,
+                spreadValue: userData.spreadValue,
+                twoFactorEnabled: userData.twoFactorEnabled,
+                twoFactorMethod: userData.twoFactorMethod,
+            };
+
+            setUser(newUser);
+            return newUser;
+        } catch (error) {
+            console.error("Erro na verificação 2FA:", error);
+            throw error;
+        }
+    }
+
     function logout() {
         clearTokens();
         setUser(null);
@@ -217,7 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, verifyTwoFactor, logout }}>
             {children}
         </AuthContext.Provider>
     );
