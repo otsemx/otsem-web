@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff, Mail, User, Lock, CheckCircle2, Shield, Zap, Globe2, Gift, Loader2, ArrowRight, ArrowLeft, Building2, IdCard, Calendar } from "lucide-react";
+import { Eye, EyeOff, Mail, User, Lock, CheckCircle2, Shield, Zap, Globe2, Gift, Loader2, ArrowRight, ArrowLeft, Building2, IdCard } from "lucide-react";
 import http from "@/lib/http";
 import { setTokens } from "@/lib/token";
 import { toast } from "sonner";
@@ -100,10 +100,6 @@ function formatCNPJ(value: string): string {
 const schema = z
     .object({
         name: z.string().min(3, "Informe seu nome").transform((v) => v.trim()),
-        age: z.preprocess(
-            (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
-            z.number({ message: "Informe sua idade" }).min(18, "Você deve ter pelo menos 18 anos").max(120, "Idade inválida")
-        ),
         email: z.string().email("E-mail inválido").transform((v) => v.trim().toLowerCase()),
         password: z.string().min(8, "Mínimo 8 caracteres"),
         confirm: z.string().min(8, "Confirme sua senha"),
@@ -218,7 +214,6 @@ function RegisterPageInner(): React.JSX.Element {
         resolver,
         defaultValues: {
             name: "",
-            age: undefined,
             email: "",
             password: "",
             confirm: "",
@@ -277,7 +272,6 @@ function RegisterPageInner(): React.JSX.Element {
                 email: v.email,
                 password: v.password,
                 name: v.name,
-                age: v.age,
                 type: v.customerType,
             };
 
@@ -462,48 +456,23 @@ function RegisterPageInner(): React.JSX.Element {
                                         )}
                                     </div>
 
-                                    {/* Name and Age Row - 2 columns on desktop */}
-                                    <div className="grid grid-cols-1 md:grid-cols-[1fr,140px] gap-3">
-                                        {/* Full Name */}
-                                        <div className="grid gap-1.5">
-                                            <Label htmlFor="name" className="text-xs sm:text-sm font-black text-slate-900">
-                                                Nome completo
-                                            </Label>
-                                            <div className="relative">
-                                                <User className="pointer-events-none absolute left-3 sm:left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                                                <Input
-                                                    id="name"
-                                                    className="h-11 sm:h-12 rounded-xl sm:rounded-2xl border-black/[0.05] bg-white/60 pl-9 sm:pl-10 pr-3 text-sm sm:text-base text-slate-900 placeholder:text-slate-500 transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                                    placeholder="Seu nome completo"
-                                                    {...form.register("name")}
-                                                />
-                                            </div>
-                                            {form.formState.errors.name && (
-                                                <p className="text-xs text-red-500 font-medium">{form.formState.errors.name.message}</p>
-                                            )}
+                                    {/* Full Name */}
+                                    <div className="grid gap-1.5">
+                                        <Label htmlFor="name" className="text-xs sm:text-sm font-black text-slate-900">
+                                            Nome completo
+                                        </Label>
+                                        <div className="relative">
+                                            <User className="pointer-events-none absolute left-3 sm:left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                                            <Input
+                                                id="name"
+                                                className="h-11 sm:h-12 rounded-xl sm:rounded-2xl border-black/[0.05] bg-white/60 pl-9 sm:pl-10 pr-3 text-sm sm:text-base text-slate-900 placeholder:text-slate-500 transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                placeholder="Seu nome completo"
+                                                {...form.register("name")}
+                                            />
                                         </div>
-
-                                        {/* Age */}
-                                        <div className="grid gap-1.5">
-                                            <Label htmlFor="age" className="text-xs sm:text-sm font-black text-slate-900">
-                                                Idade
-                                            </Label>
-                                            <div className="relative">
-                                                <Calendar className="pointer-events-none absolute left-3 sm:left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                                                <Input
-                                                    id="age"
-                                                    type="number"
-                                                    min="18"
-                                                    max="120"
-                                                    className="h-11 sm:h-12 rounded-xl sm:rounded-2xl border-black/[0.05] bg-white/60 pl-9 sm:pl-10 pr-3 text-sm sm:text-base text-slate-900 placeholder:text-slate-500 transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                                    placeholder="Sua idade"
-                                                    {...form.register("age")}
-                                                />
-                                            </div>
-                                            {form.formState.errors.age && (
-                                                <p className="text-xs text-red-500 font-medium">{form.formState.errors.age.message}</p>
-                                            )}
-                                        </div>
+                                        {form.formState.errors.name && (
+                                            <p className="text-xs text-red-500 font-medium">{form.formState.errors.name.message}</p>
+                                        )}
                                     </div>
 
                                     {/* CPF Field (only for PF) */}
