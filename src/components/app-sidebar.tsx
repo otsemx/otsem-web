@@ -4,6 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   LayoutDashboard,
   Users,
@@ -40,42 +41,45 @@ type Item = {
   items?: Item[];
 };
 
-const nav: Item[] = [
-  {
-    title: "Visão geral",
-    url: "/admin/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Operações",
-    url: "/admin",
-    items: [
-      { title: "Transações", url: "/admin/recebidos", icon: Banknote },
-      { title: "Compras USDT", url: "/admin/conversions", icon: ArrowRightLeft },
-      { title: "Vendas USDT", url: "/admin/sell-deposits", icon: ArrowRightLeft },
-    ],
-  },
-  {
-    title: "Usuários & Carteiras",
-    url: "/admin",
-    items: [
-      { title: "Usuários", url: "/admin/users", icon: Users },
-      { title: "Carteiras USDT", url: "/admin/wallets", icon: Wallet },
-      { title: "Afiliados", url: "/admin/affiliates", icon: UserPlus },
-      { title: "Upgrades KYC", url: "/admin/kyc-upgrades", icon: ArrowUpCircle },
-    ],
-  },
-  {
-    title: "Sistema",
-    url: "/admin",
-    items: [
-      { title: "Configurações", url: "/admin/settings", icon: Settings },
-      { title: "Webhooks", url: "/admin/webhooks", icon: Webhook },
-      { title: "Feature Flags", url: "/admin/flags", icon: Flag },
-      { title: "Logs", url: "/admin/logs", icon: Bug },
-    ],
-  },
-];
+function useNav(): Item[] {
+  const t = useTranslations("sidebar");
+  return [
+    {
+      title: t("overview"),
+      url: "/admin/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      title: t("operations"),
+      url: "/admin",
+      items: [
+        { title: t("transactions"), url: "/admin/recebidos", icon: Banknote },
+        { title: t("buyUsdt"), url: "/admin/conversions", icon: ArrowRightLeft },
+        { title: t("sellUsdt"), url: "/admin/sell-deposits", icon: ArrowRightLeft },
+      ],
+    },
+    {
+      title: t("usersAndWallets"),
+      url: "/admin",
+      items: [
+        { title: t("users"), url: "/admin/users", icon: Users },
+        { title: t("usdtWallets"), url: "/admin/wallets", icon: Wallet },
+        { title: t("affiliates"), url: "/admin/affiliates", icon: UserPlus },
+        { title: t("kycUpgrades"), url: "/admin/kyc-upgrades", icon: ArrowUpCircle },
+      ],
+    },
+    {
+      title: t("system"),
+      url: "/admin",
+      items: [
+        { title: t("settings"), url: "/admin/settings", icon: Settings },
+        { title: t("webhooks"), url: "/admin/webhooks", icon: Webhook },
+        { title: t("featureFlags"), url: "/admin/flags", icon: Flag },
+        { title: t("logs"), url: "/admin/logs", icon: Bug },
+      ],
+    },
+  ];
+}
 
 function isActive(pathname: string, href: string) {
   // ativo se for a rota exata ou um prefixo (ex.: /admin/users/123)
@@ -85,6 +89,7 @@ function isActive(pathname: string, href: string) {
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname() ?? "";
+  const nav = useNav();
 
   return (
     <Sidebar variant="floating" {...props}>

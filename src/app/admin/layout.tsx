@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import { useSelectedLayoutSegments } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { useAuth } from "@/contexts/auth-context";
 import { Protected } from "@/components/auth/Protected";
@@ -12,6 +13,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { HeaderUserChip } from "@/components/auth/HeaderUserChip";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 import {
     SidebarProvider,
@@ -75,13 +77,14 @@ function AutoBreadcrumb() {
 
 function HeaderLogout() {
     const { logout } = useAuth();
+    const t = useTranslations("auth");
     return (
         <Button
             variant="ghost"
             size="icon"
             onClick={logout}
-            title="Sair da conta"
-            aria-label="Sair da conta"
+            title={t("logoutAccount")}
+            aria-label={t("logoutAccount")}
         >
             <LogOut className="h-5 w-5" />
         </Button>
@@ -105,6 +108,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                                 {/* Chip do usuário + Logout */}
                                 <div className="ml-auto flex items-center gap-2">
+                                    <LanguageSwitcher />
                                     <HeaderUserChip />
                                     <Separator orientation="vertical" className="h-6" />
                                     <HeaderLogout />

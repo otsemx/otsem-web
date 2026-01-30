@@ -11,15 +11,15 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-// import { doLogout } from "@/lib/auth";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 export default function UserMenu() {
     const router = useRouter();
+    const t = useTranslations("userMenu");
 
     async function handleLogout() {
-        // await doLogout();
-        toast.success("Você saiu da sua conta.");
+        toast.success(t("loggedOut"));
         router.replace("/login");
     }
 
@@ -34,20 +34,20 @@ export default function UserMenu() {
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48" align="end">
-                <DropdownMenuLabel>Minha conta</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("myAccount")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push("/profile")}>
-                    <User className="h-4 w-4 mr-2" /> Perfil
+                    <User className="h-4 w-4 mr-2" /> {t("profile")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/settings")}>
-                    <Settings className="h-4 w-4 mr-2" /> Configurações
+                    <Settings className="h-4 w-4 mr-2" /> {t("settings")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/support")}>
-                    <HelpCircle className="h-4 w-4 mr-2" /> Suporte
+                    <HelpCircle className="h-4 w-4 mr-2" /> {t("support")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-rose-600">
-                    <LogOut className="h-4 w-4 mr-2" /> Sair
+                    <LogOut className="h-4 w-4 mr-2" /> {t("logout")}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

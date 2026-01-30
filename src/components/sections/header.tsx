@@ -5,8 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronRight, Sparkles } from "lucide-react";
 import haptic from "@/lib/haptics";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const Header = () => {
+  const t = useTranslations();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -32,9 +35,9 @@ const Header = () => {
   }, []);
 
   const navLinks = [
-    { href: "#como-funciona", label: "Como funciona" },
-    { href: "#recursos", label: "Recursos" },
-    { href: "#precos", label: "Preços" },
+    { href: "#como-funciona", label: t("nav.howItWorks") },
+    { href: "#recursos", label: t("nav.features") },
+    { href: "#precos", label: t("nav.pricing") },
   ];
 
   return (
@@ -77,19 +80,20 @@ const Header = () => {
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
+            <LanguageSwitcher className="text-slate-600" />
             <Link
               href="/login"
               onClick={handleNavClick}
               className="text-[12px] sm:text-[13px] font-semibold text-slate-600 hover:text-primary transition-colors px-2.5 py-1.5"
             >
-              Entrar
+              {t("common.login")}
             </Link>
             <Link href="/register" onClick={handleButtonClick}>
               <button
                 type="button"
                 className="btn-premium py-2 px-4 rounded-xl text-[12px] sm:text-[13px] transition-transform duration-150 active:scale-[0.98]"
               >
-                Crie sua conta
+                {t("common.register")}
               </button>
             </Link>
           </div>
@@ -144,6 +148,8 @@ const Header = () => {
 
                     <div className="h-px bg-slate-200/60 my-1 mx-2" />
 
+                    <LanguageSwitcher className="text-slate-700 justify-start px-3 py-3" />
+
                     <Link
                       href="/login"
                       onClick={() => {
@@ -152,7 +158,7 @@ const Header = () => {
                       }}
                       className="flex items-center px-3 py-3 text-[14px] font-semibold text-slate-700 hover:text-primary hover:bg-primary/5 rounded-xl transition-all ios-touch-effect"
                     >
-                      Entrar
+                      {t("common.login")}
                     </Link>
                 </nav>
 
@@ -166,7 +172,7 @@ const Header = () => {
                     className="block"
                   >
 <button className="w-full btn-premium py-3 rounded-xl text-[14px]">
-                        Crie sua conta
+                        {t("common.register")}
                       </button>
                   </Link>
                 </div>

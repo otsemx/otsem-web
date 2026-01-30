@@ -3,8 +3,8 @@
 
 import * as React from "react";
 import Logo from "@/components/brand/Logo";
-// import TopActionsMenu from "@/components/layout/TopActionsMenu";
 import UserMenu from "@/components/layout/UserMenu";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 // import { Button } from "@/components/ui/button";
 // import {
 //     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -50,6 +50,7 @@ export default function AppHeader() {
                             tickerText={TICKER}
                         /> */}
                     </div>
+                    <LanguageSwitcher />
                     <UserMenu />
                 </div>
             </div>

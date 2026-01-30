@@ -19,6 +19,8 @@ import { Separator } from '@/components/ui/separator';
 
 import { useAuth } from '@/contexts/auth-context';
 import { TwoFactorVerify } from '@/components/auth/TwoFactorVerify';
+import { useTranslations } from 'next-intl';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 const loginSchema = z.object({
     email: z.string().min(1, 'Informe seu e-mail').email('E-mail inválido').transform((v) => v.trim().toLowerCase()),
@@ -41,7 +43,7 @@ export default function LoginPageClient(): React.JSX.Element {
     return (
         <Suspense fallback={
             <div className="grid min-h-screen place-items-center bg-white text-sm text-slate-900/50">
-                Carregando...
+                ...
             </div>
         }>
             <LoginPageInner />
@@ -54,6 +56,7 @@ function LoginPageInner(): React.JSX.Element {
     const sp = useSearchParams();
     const next = safeNext(sp ? sp.get('next') : undefined);
     const { login, verifyTwoFactor, user } = useAuth();
+    const t = useTranslations();
 
     const {
         register,
@@ -83,7 +86,7 @@ function LoginPageInner(): React.JSX.Element {
                 return;
             }
 
-            toast.success('Bem-vindo de volta!');
+            toast.success(t('auth.welcomeBackToast'));
 
             // Redirect based on role if no 'next' parameter
             if (sp && sp.get('next')) {
@@ -93,7 +96,7 @@ function LoginPageInner(): React.JSX.Element {
                 router.replace(dashboardPath);
             }
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Falha no login';
+            const message = error instanceof Error ? error.message : t('auth.loginFailed');
             toast.error(message);
         }
     };
@@ -101,7 +104,7 @@ function LoginPageInner(): React.JSX.Element {
     const handle2FAVerify = async (code: string, isBackupCode: boolean) => {
         try {
             const loggedInUser = await verifyTwoFactor(code, tempToken, isBackupCode);
-            toast.success('Autenticação concluída!');
+            toast.success(t('auth.authComplete'));
 
             // Redirect based on role
             if (sp && sp.get('next')) {
@@ -142,7 +145,7 @@ function LoginPageInner(): React.JSX.Element {
                         className="flex items-center gap-2 px-4 py-2.5 rounded-2xl liquid-glass text-slate-900/70 hover:text-slate-900 font-bold text-sm transition-colors"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Voltar
+                        {t('common.back')}
                     </motion.button>
                 </div>
 
@@ -180,9 +183,15 @@ function LoginPageInner(): React.JSX.Element {
                         className="flex items-center gap-2 px-4 py-2.5 rounded-2xl liquid-glass text-slate-900/70 hover:text-slate-900 font-bold text-sm transition-colors"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Voltar
+                        {t('common.back')}
                     </motion.button>
                 </Link>
+            </div>
+
+            <div className="fixed top-6 right-6 z-50">
+                <div className="rounded-2xl liquid-glass">
+                    <LanguageSwitcher className="text-slate-900/70 hover:text-slate-900" />
+                </div>
             </div>
 
             <div className="flex min-h-screen w-full items-center justify-center px-4 py-24 lg:px-8 xl:px-16">
@@ -191,35 +200,35 @@ function LoginPageInner(): React.JSX.Element {
                         <div>
                             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/5 border border-primary/10 px-4 py-1.5 text-sm font-black text-primary">
                                 <Sparkles className="h-4 w-4" />
-                                Bem-vindo de volta
+                                {t('auth.welcomeBack')}
                             </div>
                             <h1 className="text-4xl font-black text-slate-900 xl:text-5xl tracking-tightest">
-                                Acesse sua conta
+                                {t('auth.accessYourAccount')}
                                 <br />
                                 <span className="text-primary">
                                     OtsemPay
                                 </span>
                             </h1>
                             <p className="mt-4 text-lg text-slate-500 font-medium">
-                                Gerencie suas operacoes OTC e converta BRL ↔ USDT com as melhores taxas do mercado.
+                                {t('auth.accountDescription')}
                             </p>
                         </div>
 
                         <div className="space-y-4">
                             <FeatureItem
                                 icon={<Zap className="h-5 w-5 text-yellow-500" />}
-                                title="Liquidacao rapida"
-                                desc="Operacoes finalizadas imediatamente"
+                                title={t('auth.fastSettlement')}
+                                desc={t('auth.fastSettlementDesc')}
                             />
                             <FeatureItem
                                 icon={<Shield className="h-5 w-5 text-primary" />}
-                                title="Seguranca total"
-                                desc="Criptografia end-to-end"
+                                title={t('auth.totalSecurity')}
+                                desc={t('auth.totalSecurityDesc')}
                             />
                             <FeatureItem
                                 icon={<Globe2 className="h-5 w-5 text-emerald-500" />}
-                                title="Sem fronteiras"
-                                desc="Opere de qualquer lugar do mundo"
+                                title={t('auth.noBorders')}
+                                desc={t('auth.noBordersDesc')}
                             />
                         </div>
                     </div>
@@ -235,10 +244,10 @@ function LoginPageInner(): React.JSX.Element {
                                     />
                                 </div>
                                 <CardTitle className="text-center text-2xl font-black text-slate-900">
-                                    Entrar
+                                    {t('auth.loginTitle')}
                                 </CardTitle>
                                 <p className="text-center text-sm text-slate-500 font-medium">
-                                    Acesse sua conta para continuar
+                                    {t('auth.loginSubtitle')}
                                 </p>
                             </CardHeader>
 
@@ -246,7 +255,7 @@ function LoginPageInner(): React.JSX.Element {
                                 <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5" noValidate>
                                     <div className="grid gap-2">
                                         <Label htmlFor="email" className="text-sm font-black text-slate-900">
-                                            E-mail
+                                            {t('common.email')}
                                         </Label>
                                         <div className="relative">
                                             <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -268,7 +277,7 @@ function LoginPageInner(): React.JSX.Element {
 
                                     <div className="grid gap-2">
                                         <Label htmlFor="password" className="text-sm font-black text-slate-900">
-                                            Senha
+                                            {t('common.password')}
                                         </Label>
                                         <div className="relative">
                                             <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -285,7 +294,7 @@ function LoginPageInner(): React.JSX.Element {
                                                 type="button"
                                                 onClick={() => setShowPw((v) => !v)}
                                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-slate-900"
-                                                aria-label={showPw ? 'Ocultar senha' : 'Mostrar senha'}
+                                                aria-label={showPw ? t('auth.hidePassword') : t('auth.showPassword')}
                                             >
                                                 {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
@@ -302,13 +311,13 @@ function LoginPageInner(): React.JSX.Element {
                                                 className="h-4 w-4 rounded border-black/10 bg-white/60 text-primary focus:ring-2 focus:ring-primary/20"
                                                 {...register('remember')}
                                             />
-                                            Lembrar de mim
+                                            {t('auth.rememberMe')}
                                         </label>
                                         <Link
                                             href="/forgot"
                                             className="font-bold text-primary transition hover:text-primary/80"
                                         >
-                                            Esqueci a senha
+                                            {t('auth.forgotPassword')}
                                         </Link>
                                     </div>
 
@@ -320,19 +329,19 @@ function LoginPageInner(): React.JSX.Element {
                                         className="btn-premium h-12 rounded-2xl font-black text-base disabled:opacity-50"
                                         aria-busy={isSubmitting}
                                     >
-                                        {isSubmitting ? 'Entrando...' : 'Entrar'}
+                                        {isSubmitting ? t('auth.loggingIn') : t('auth.loginTitle')}
                                         {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
                                     </motion.button>
 
                                     <Separator className="my-2 bg-black/[0.03]" />
 
                                     <p className="text-center text-sm text-slate-500 font-medium">
-                                        Ainda não tem conta?{' '}
+                                        {t('auth.noAccount')}{' '}
                                         <Link
                                             href="/register"
                                             className="font-bold text-primary transition hover:text-primary/80"
                                         >
-                                            Criar conta
+                                            {t('auth.createAccount')}
                                         </Link>
                                     </p>
                                 </form>
@@ -342,7 +351,7 @@ function LoginPageInner(): React.JSX.Element {
                         <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500 font-medium">
                             <div className="flex items-center gap-1.5">
                                 <Shield className="h-3.5 w-3.5 text-emerald-500" />
-                                Conexão segura
+                                {t('common.secureConnection')}
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-primary" />

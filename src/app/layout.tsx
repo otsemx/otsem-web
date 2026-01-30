@@ -7,6 +7,8 @@ import "./globals.css";
 import { VisualEditsMessenger } from "orchids-visual-edits";
 import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 
 export const metadata: Metadata = {
     title: "OtsemPay • BRL ↔ USDT",
@@ -23,13 +25,16 @@ import { ConnectionStatus } from "@/components/connection-status";
 import { validateEnv } from "@/lib/env";
 import { CookieConsent } from "@/components/CookieConsent";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className="antialiased">
         <ConnectionStatus />
         <Script
@@ -50,6 +55,7 @@ export default function RootLayout({
           data-custom-data='{"appName": "YourApp", "version": "1.0.0", "greeting": "hi"}'
         />
 
+        <NextIntlClientProvider locale={locale} messages={messages}>
         <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -63,6 +69,7 @@ export default function RootLayout({
             </AuthProvider>
             <CookieConsent />
         </ThemeProvider>
+        </NextIntlClientProvider>
         <VisualEditsMessenger />
       </body>
     </html>

@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { useAuth } from "@/contexts/auth-context";
+import { useTranslations } from "next-intl";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const loginSchema = z.object({
     email: z.string().min(1, "Informe seu e-mail").email("E-mail inválido").transform((v) => v.trim().toLowerCase()),
@@ -28,6 +30,7 @@ export default function AdminLoginPage() {
     const router = useRouter();
     const { login, user } = useAuth();
     const [showPw, setShowPw] = React.useState(false);
+    const t = useTranslations();
 
     const {
         register,
@@ -43,18 +46,18 @@ export default function AdminLoginPage() {
             if (user.role === "ADMIN") {
                 router.replace("/admin/dashboard");
             } else {
-                toast.error("Acesso restrito a administradores");
+                toast.error(t("auth.adminOnly"));
                 router.replace("/customer/dashboard");
             }
         }
-    }, [user, router]);
+    }, [user, router, t]);
 
     const onSubmit: SubmitHandler<LoginForm> = async (values) => {
         try {
             await login(values.email, values.password);
-            toast.success("Bem-vindo, Administrador!");
+            toast.success(t("auth.welcomeAdmin"));
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Falha no login";
+            const message = error instanceof Error ? error.message : t("auth.loginFailed");
             toast.error(message);
         }
     };
@@ -83,11 +86,14 @@ export default function AdminLoginPage() {
                         </span>
                     </Link>
                     
-                    <Link href="/login">
-                        <Button variant="outline" className="rounded-full border-white/10 text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white">
-                            Área do Cliente
-                        </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <LanguageSwitcher className="text-white/70" />
+                        <Link href="/login">
+                            <Button variant="outline" className="rounded-full border-white/10 text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white">
+                                {t("common.customerArea")}
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
             </header>
 
@@ -100,10 +106,10 @@ export default function AdminLoginPage() {
                             </div>
                             <div className="text-center">
                                 <CardTitle className="text-2xl font-bold text-white">
-                                    Painel Administrativo
+                                    {t("auth.adminPanel")}
                                 </CardTitle>
                                 <p className="mt-2 text-sm text-white/50">
-                                    Acesso restrito a administradores
+                                    {t("auth.adminOnly")}
                                 </p>
                             </div>
                         </CardHeader>
@@ -112,7 +118,7 @@ export default function AdminLoginPage() {
                             <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5" noValidate>
                                 <div className="grid gap-2">
                                     <Label htmlFor="email" className="text-sm font-medium text-white/80">
-                                        E-mail do administrador
+                                        {t("auth.adminEmail")}
                                     </Label>
                                     <div className="relative">
                                         <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
@@ -134,7 +140,7 @@ export default function AdminLoginPage() {
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="password" className="text-sm font-medium text-white/80">
-                                        Senha
+                                        {t("common.password")}
                                     </Label>
                                     <div className="relative">
                                         <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
@@ -151,7 +157,7 @@ export default function AdminLoginPage() {
                                             type="button"
                                             onClick={() => setShowPw((v) => !v)}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 transition hover:text-white/60"
-                                            aria-label={showPw ? "Ocultar senha" : "Mostrar senha"}
+                                            aria-label={showPw ? t("auth.hidePassword") : t("auth.showPassword")}
                                         >
                                             {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                         </button>
@@ -167,7 +173,7 @@ export default function AdminLoginPage() {
                                     className="mt-2 h-12 rounded-xl bg-gradient-to-r from-red-600 to-red-700 font-semibold text-white shadow-lg shadow-red-500/25 transition hover:from-red-500 hover:to-red-600 hover:shadow-xl hover:shadow-red-500/30 disabled:opacity-50"
                                     aria-busy={isSubmitting}
                                 >
-                                    {isSubmitting ? "Verificando..." : "Acessar Painel"}
+                                    {isSubmitting ? t("auth.verifying") : t("auth.accessPanel")}
                                 </Button>
                             </form>
                         </CardContent>
@@ -176,18 +182,18 @@ export default function AdminLoginPage() {
                     <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-white/40">
                         <div className="flex items-center gap-2">
                             <ShieldCheck className="h-4 w-4 text-green-500" />
-                            Conexão criptografada
+                            {t("common.encryptedConnection")}
                         </div>
                         <div className="flex items-center gap-2">
                             <KeyRound className="h-4 w-4 text-red-400" />
-                            Acesso monitorado
+                            {t("common.monitoredAccess")}
                         </div>
                     </div>
 
                     <p className="mt-8 text-center text-xs text-white/30">
-                        Todas as tentativas de acesso são registradas.
+                        {t("auth.allAccessLogged")}
                         <br />
-                        Uso não autorizado é proibido.
+                        {t("auth.unauthorizedForbidden")}
                     </p>
                 </div>
             </div>

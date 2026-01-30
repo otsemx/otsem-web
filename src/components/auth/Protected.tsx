@@ -5,11 +5,13 @@ import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { FullscreenSpinner } from "@/components/ui/spinner";
+import { useTranslations } from "next-intl";
 
 export function Protected({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
     const { loading, user } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const t = useTranslations("common");
 
     React.useEffect(() => {
         if (loading) return;
@@ -19,12 +21,12 @@ export function Protected({ children, roles }: { children: React.ReactNode; role
             return;
         }
         if (roles && user.role && !roles.includes(user.role)) {
-            router.replace("/"); // ou uma página 403
+            router.replace("/");
         }
     }, [loading, user, roles, pathname, router]);
 
     if (loading || !user) {
-        return <FullscreenSpinner label="Verificando sessão…" />;
+        return <FullscreenSpinner label={t("verifyingSession")} />;
     }
 
     return <>{children}</>;
