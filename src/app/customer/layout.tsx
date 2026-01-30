@@ -77,7 +77,7 @@ type CustomerResponse = {
     createdAt: string;
 };
 
-const menuGroups = [
+const baseMenuGroups = [
     {
         title: "Conta",
         items: [
@@ -93,12 +93,16 @@ const menuGroups = [
             { label: "Transações", href: "/customer/transactions", icon: Send },
         ],
     },
-    {
-        title: "Afiliados",
-        items: [
-            { label: "Minhas Indicações", href: "/customer/affiliates", icon: Users },
-        ],
-    },
+];
+
+const affiliateMenuGroup = {
+    title: "Afiliados",
+    items: [
+        { label: "Minhas Indicações", href: "/customer/affiliates", icon: Users },
+    ],
+};
+
+const bottomMenuGroups = [
     {
         title: "Outros",
         items: [{ label: "Configurações", href: "/customer/settings", icon: Settings }],
@@ -170,8 +174,14 @@ function KycBadge({ status }: { status: string }) {
     );
 }
 
-function CustomerSidebar({ kycStatus }: { kycStatus: string }) {
+function CustomerSidebar({ kycStatus, isAffiliate }: { kycStatus: string; isAffiliate: boolean }) {
     const pathname = usePathname() ?? "";
+
+    const menuGroups = [
+        ...baseMenuGroups,
+        ...(isAffiliate ? [affiliateMenuGroup] : []),
+        ...bottomMenuGroups,
+    ];
 
     return (
         <Sidebar
@@ -305,26 +315,36 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     const { user } = useAuth();
     const { open, closeModal, triggerRefresh } = useUiModals();
     const [kycStatus, setKycStatus] = React.useState<string>("not_requested");
+    const [isAffiliate, setIsAffiliate] = React.useState(false);
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
-        async function loadKyc() {
+        async function loadData() {
             try {
-                const response = await http.get<{ data: CustomerResponse } | CustomerResponse>("/customers/me");
-                const customer = "data" in response.data && response.data.data ? response.data.data : response.data;
+                const [customerRes] = await Promise.all([
+                    http.get<{ data: CustomerResponse } | CustomerResponse>("/customers/me"),
+                ]);
+                const customer = "data" in customerRes.data && customerRes.data.data ? customerRes.data.data : customerRes.data;
 
                 if ((customer as CustomerResponse)?.accountStatus) {
                     setKycStatus((customer as CustomerResponse).accountStatus);
                 }
             } catch (err) {
-                console.error("Erro ao buscar KYC:", err);
-            } finally {
-                setLoading(false);
+                console.error("Erro ao buscar dados do cliente:", err);
             }
+
+            try {
+                await http.get("/customers/me/affiliate");
+                setIsAffiliate(true);
+            } catch {
+                setIsAffiliate(false);
+            }
+
+            setLoading(false);
         }
 
         if (user) {
-            loadKyc();
+            loadData();
         }
     }, [user]);
 
@@ -339,7 +359,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
             />
             <SidebarProvider>
                 <div className="flex min-h-screen w-full bg-background">
-                    <CustomerSidebar kycStatus={kycStatus} />
+                    <CustomerSidebar kycStatus={kycStatus} isAffiliate={isAffiliate} />
 
                     <div className="flex flex-1 flex-col">
                         <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4">

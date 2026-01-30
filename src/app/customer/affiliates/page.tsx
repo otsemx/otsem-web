@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Copy, Users, DollarSign, Clock, Check, Share2, TrendingUp, Loader2 } from "lucide-react";
+import { Copy, Users, DollarSign, Clock, Check, Share2, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +58,6 @@ function formatDate(dateString: string): string {
 
 export default function AffiliatesPage() {
     const [loading, setLoading] = React.useState(true);
-    const [activating, setActivating] = React.useState(false);
     const [stats, setStats] = React.useState<AffiliateStats | null>(null);
     const [referrals, setReferrals] = React.useState<Referral[]>([]);
     const [commissions, setCommissions] = React.useState<Commission[]>([]);
@@ -76,37 +75,19 @@ export default function AffiliatesPage() {
             setStats(statsRes.data.data);
             setReferrals(referralsRes.data.data || []);
             setCommissions(commissionsRes.data.data || []);
-            return true;
         } catch {
-            return false;
+            setStats(null);
         }
     }, []);
 
-    const activateAffiliate = React.useCallback(async () => {
-        setActivating(true);
-        try {
-            await http.post("/customers/me/affiliate/activate");
-            await loadAffiliateData();
-            toast.success("Programa de indicações ativado!");
-        } catch (err) {
-            console.error("Erro ao ativar afiliado:", err);
-            toast.error("Erro ao ativar programa de indicações");
-        } finally {
-            setActivating(false);
-        }
-    }, [loadAffiliateData]);
-
     React.useEffect(() => {
         async function loadData() {
-            const success = await loadAffiliateData();
-            if (!success) {
-                await activateAffiliate();
-            }
+            await loadAffiliateData();
             setLoading(false);
         }
 
         loadData();
-    }, [loadAffiliateData, activateAffiliate]);
+    }, [loadAffiliateData]);
 
     const referralLink = stats?.referralCode
         ? `${typeof window !== "undefined" ? window.location.origin : ""}/register?ref=${stats.referralCode}`
@@ -146,30 +127,12 @@ export default function AffiliatesPage() {
 
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                        {activating ? (
-                            <>
-                                <Loader2 className="h-16 w-16 text-[#6F00FF] mb-4 animate-spin" />
-                                <h3 className="text-lg font-semibold mb-2">Ativando seu programa de indicações...</h3>
-                                <p className="text-muted-foreground text-center max-w-md">
-                                    Aguarde enquanto criamos seu código de indicação.
-                                </p>
-                            </>
-                        ) : (
-                            <>
-                                <Users className="h-16 w-16 text-muted-foreground/50 mb-4" />
-                                <h3 className="text-lg font-semibold mb-2">Erro ao carregar indicações</h3>
-                                <p className="text-muted-foreground text-center max-w-md mb-4">
-                                    Não foi possível ativar seu programa de indicações. Tente novamente.
-                                </p>
-                                <Button 
-                                    className="bg-gradient-to-r from-[#6F00FF] to-[#6F00FF]"
-                                    onClick={activateAffiliate}
-                                    disabled={activating}
-                                >
-                                    Tentar novamente
-                                </Button>
-                            </>
-                        )}
+                        <Users className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Recurso não disponível</h3>
+                        <p className="text-muted-foreground text-center max-w-md">
+                            O programa de afiliados não está habilitado para a sua conta.
+                            Entre em contato com o suporte para solicitar acesso.
+                        </p>
                     </CardContent>
                 </Card>
             </div>
