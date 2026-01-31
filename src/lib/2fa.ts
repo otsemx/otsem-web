@@ -1,19 +1,32 @@
 // src/lib/2fa.ts
-import { authenticator } from 'otplib';
+import { TOTP, generateSecret as otplibGenerateSecret } from 'otplib';
 import QRCode from 'qrcode';
+
+// Create TOTP instance with crypto plugin
+import { NobleCryptoPlugin } from 'otplib';
+import { ScureBase32Plugin } from 'otplib';
+
+const totp = new TOTP({
+  crypto: new NobleCryptoPlugin(),
+  base32: new ScureBase32Plugin(),
+});
 
 /**
  * Generate a TOTP secret for a user
  */
 export function generateSecret(): string {
-  return authenticator.generateSecret();
+  return otplibGenerateSecret();
 }
 
 /**
  * Generate OTP Auth URL for QR code
  */
 export function generateOtpAuthUrl(email: string, secret: string, issuer: string = 'OtsemPay'): string {
-  return authenticator.keyuri(email, issuer, secret);
+  return totp.toURI({
+    issuer,
+    label: email,
+    secret,
+  });
 }
 
 /**
@@ -31,9 +44,10 @@ export async function generateQRCode(otpAuthUrl: string): Promise<string> {
 /**
  * Verify a TOTP token against a secret
  */
-export function verifyToken(token: string, secret: string): boolean {
+export async function verifyToken(token: string, secret: string): Promise<boolean> {
   try {
-    return authenticator.verify({ token, secret });
+    const result = await totp.verify(token, { secret });
+    return result.valid;
   } catch (error) {
     console.error('Error verifying token:', error);
     return false;
@@ -86,6 +100,6 @@ export function normalizeBackupCode(code: string): string {
 /**
  * Get current TOTP token (for testing purposes)
  */
-export function getCurrentToken(secret: string): string {
-  return authenticator.generate(secret);
+export async function getCurrentToken(secret: string): Promise<string> {
+  return await totp.generate({ secret });
 }

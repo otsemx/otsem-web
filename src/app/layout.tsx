@@ -19,10 +19,9 @@ export const metadata: Metadata = {
     },
 };
 
-import type { ReactNode } from "react";
-
-import { ConnectionStatus } from "@/components/connection-status";
-import { validateEnv } from "@/lib/env";
+// TODO: Re-enable ConnectionStatus with a dedicated /health endpoint instead of /auth/me
+// import { ConnectionStatus } from "@/components/connection-status";
+// import { validateEnv } from "@/lib/env";
 import { CookieConsent } from "@/components/CookieConsent";
 
 export default async function RootLayout({
@@ -36,7 +35,8 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body className="antialiased">
-        <ConnectionStatus />
+        {/* TODO: Re-enable ConnectionStatus after creating a /health endpoint */}
+        {/* <ConnectionStatus /> */}
         <Script
           id="orchids-browser-logs"
           src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/scripts/orchids-browser-logs.js"
