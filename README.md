@@ -209,7 +209,7 @@ Built with modern web technologies, OtsemPay delivers a seamless banking experie
 - **[ESLint](https://eslint.org/)** - Code linting
 - **[@typescript-eslint](https://typescript-eslint.io/)** - TypeScript ESLint
 - **[Turbopack](https://turbo.build/pack)** - Fast bundler (Next.js 15)
-- **[@vercel/analytics](https://vercel.com/analytics)** - Performance analytics
+- **[Fly.io](https://fly.io/)** - Production deployment platform
 
 ---
 
@@ -265,9 +265,6 @@ NEXT_PUBLIC_GATEWAY_URL=https://apisbank.brxbank.com.br
 
 # Application
 NEXT_PUBLIC_APP_NAME=OtsemPay
-
-# Optional: Analytics
-NEXT_PUBLIC_VERCEL_ANALYTICS_ID=your_analytics_id
 
 # Optional: Error Tracking
 NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
@@ -705,13 +702,11 @@ describe('Button', () => {
 
 ## 🚢 Deployment
 
-### Vercel (Recommended)
+### Fly.io (Recommended)
 
-1. **Connect your repository** to Vercel
-2. **Configure environment variables** in Vercel dashboard
-3. **Deploy** automatically on push to main branch
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/seu-usuario/otsem-web)
+1. **Install flyctl** - [Install Guide](https://fly.io/docs/flyctl/install/)
+2. **Configure environment variables** in `fly.toml` or Fly.io dashboard
+3. **Deploy** automatically on push to main branch via GitHub Actions
 
 ### Docker
 
@@ -1089,7 +1084,7 @@ Thank you to all our contributors! 🙏
 Special thanks to:
 
 - [shadcn](https://twitter.com/shadcn) for the amazing UI components
-- [Vercel](https://vercel.com) for the incredible Next.js framework
+- [Next.js](https://nextjs.org) for the incredible React framework
 - [Radix UI](https://www.radix-ui.com/) for accessible component primitives
 - [ViaCEP](https://viacep.com.br/) for the Brazilian postal code API
 - [Lucide](https://lucide.dev/) for the beautiful icon set
