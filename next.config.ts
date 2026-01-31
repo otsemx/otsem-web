@@ -22,9 +22,10 @@ if (fs.existsSync(envPath)) {
 const loaderPath = require.resolve('orchids-visual-edits/loader.js');
 
 const nextConfig: NextConfig = {
+    output: 'standalone',
     allowedDevOrigins: [
       '*.replit.dev',
-      '*.replit.app', 
+      '*.replit.app',
       '*.riker.replit.dev',
       '*.picard.replit.dev',
       '*.orchids.cloud',
