@@ -1,0 +1,6 @@
+npx lint-staged
+
+# Only validate lockfile sync if package.json or package-lock.json are staged
+if git diff --cached --name-only | grep -qE '^package(-lock)?\.json$'; then
+  bash scripts/verify-lockfile-sync.sh
+fi
