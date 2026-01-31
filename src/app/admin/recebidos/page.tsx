@@ -23,7 +23,7 @@ type Payment = {
 type Customer = {
     id: string;
     name: string;
-    // outros campos se necessário
+    email?: string;
 };
 
 function formatDate(dateStr: string) {
@@ -82,7 +82,7 @@ export default function PaymentsRecebidosPage() {
     const [payments, setPayments] = React.useState<Payment[]>([]);
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
     const [customerFilter, setCustomerFilter] = React.useState("");
-    const [customerOptions, setCustomerOptions] = React.useState<string[]>([]);
+    const [customerSearchTerm, setCustomerSearchTerm] = React.useState("");
     const [dataInicio, setDataInicio] = React.useState(defaultDates.inicio);
     const [dataFim, setDataFim] = React.useState(defaultDates.fim);
     const [customers, setCustomers] = React.useState<Customer[]>([]);
@@ -104,7 +104,6 @@ export default function PaymentsRecebidosPage() {
             const query = new URLSearchParams(params).toString();
             const res = await http.get<Payment[]>(`/payments?${query}`);
             setPayments(res.data);
-            setCustomerOptions(Array.from(new Set(res.data.map(p => p.customerId).filter(Boolean) as string[])));
         } catch (err) {
             setPayments([]);
         } finally {
@@ -116,8 +115,22 @@ export default function PaymentsRecebidosPage() {
     React.useEffect(() => {
         async function loadCustomers() {
             try {
-                const res = await http.get<{ data: Customer[] }>("/customers");
-                setCustomers(Array.isArray(res.data) ? res.data : res.data.data);
+                // Primeira chamada para obter o total de clientes
+                const firstRes = await http.get<{ data: Customer[]; total: number; totalPages: number }>("/customers?page=1&limit=10");
+                const total = firstRes.data.total || 0;
+
+                // Se tiver total, busca todos de uma vez usando o total como limit
+                if (total > 0) {
+                    const allRes = await http.get<{ data: Customer[] }>(`/customers?page=1&limit=${total}`);
+                    const customersList = Array.isArray(allRes.data) ? allRes.data : allRes.data.data || [];
+                    // Ordena alfabeticamente por nome
+                    const sortedCustomers = customersList.sort((a, b) =>
+                        a.name.localeCompare(b.name, 'pt-BR')
+                    );
+                    setCustomers(sortedCustomers);
+                } else {
+                    setCustomers([]);
+                }
             } catch (err) {
                 setCustomers([]);
             }
@@ -158,10 +171,22 @@ export default function PaymentsRecebidosPage() {
     }
 
     function getTotalValue(payments: Payment[]) {
-        // Soma todos os valores e divide por 100 para converter de centavos para reais
-        const total = payments.reduce((sum, p) => sum + p.paymentValue, 0);
+        // Soma apenas os pagamentos CONFIRMADOS
+        const total = payments
+            .filter(p => p.status === "CONFIRMED")
+            .reduce((sum, p) => sum + p.paymentValue, 0);
         return formatCurrency(total);
     }
+
+    // Filtra clientes baseado no termo de busca
+    const filteredCustomers = React.useMemo(() => {
+        if (!customerSearchTerm.trim()) return customers;
+        const searchLower = customerSearchTerm.toLowerCase();
+        return customers.filter(customer =>
+            customer.name.toLowerCase().includes(searchLower) ||
+            customer.id.toLowerCase().includes(searchLower)
+        );
+    }, [customers, customerSearchTerm]);
 
     return (
         <div className="w-full p-6">
@@ -182,20 +207,38 @@ export default function PaymentsRecebidosPage() {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleFilterSubmit} className="flex flex-col md:flex-row md:items-end gap-4 mb-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Filtrar por cliente</label>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium">Cliente</label>
+                            <div className="relative">
+                                <Input
+                                    type="text"
+                                    placeholder="Buscar por nome..."
+                                    value={customerSearchTerm}
+                                    onChange={e => setCustomerSearchTerm(e.target.value)}
+                                    className="min-w-50"
+                                />
+                            </div>
                             <select
                                 value={customerFilter}
                                 onChange={e => setCustomerFilter(e.target.value)}
-                                className="border rounded px-2 py-1 min-w-[180px]"
+                                className="min-w-50 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
-                                <option value="">Todos</option>
-                                {customers.map(customer => (
-                                    <option key={customer.id} value={customer.id}>
-                                        {customer.name}
-                                    </option>
-                                ))}
+                                <option value="">Todos os clientes</option>
+                                {filteredCustomers.length > 0 ? (
+                                    filteredCustomers.map(customer => (
+                                        <option key={customer.id} value={customer.id}>
+                                            {customer.name || customer.email || 'Sem nome'}
+                                        </option>
+                                    ))
+                                ) : (
+                                    <option disabled>Nenhum cliente encontrado</option>
+                                )}
                             </select>
+                            {customerSearchTerm && (
+                                <span className="text-xs text-muted-foreground">
+                                    {filteredCustomers.length} de {customers.length} encontrado(s)
+                                </span>
+                            )}
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Data início</label>
@@ -203,7 +246,7 @@ export default function PaymentsRecebidosPage() {
                                 type="date"
                                 value={dataInicio}
                                 onChange={e => setDataInicio(e.target.value)}
-                                className="min-w-[140px]"
+                                className="min-w-35"
                             />
                         </div>
                         <div>
@@ -212,7 +255,7 @@ export default function PaymentsRecebidosPage() {
                                 type="date"
                                 value={dataFim}
                                 onChange={e => setDataFim(e.target.value)}
-                                className="min-w-[140px]"
+                                className="min-w-35"
                             />
                         </div>
                         <Button type="submit" variant="outline" size="sm">
