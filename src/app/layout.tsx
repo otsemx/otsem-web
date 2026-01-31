@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { VisualEditsMessenger } from "orchids-visual-edits";
 import ErrorReporter from "@/components/ErrorReporter";
@@ -65,7 +64,6 @@ export default async function RootLayout({
             <AuthProvider>
                 {children}
                 <Toaster position="top-right" richColors />
-                <Analytics />
             </AuthProvider>
             <CookieConsent />
         </ThemeProvider>

@@ -152,10 +152,6 @@ Se você optar por desativar os cookies, algumas funcionalidades do nosso site p
                 <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#6F00FF]/50" />
                 <span><strong className="text-white">Google Analytics:</strong> Para análise de tráfego e comportamento do usuário.</span>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#6F00FF]/50" />
-                <span><strong className="text-white">Vercel Analytics:</strong> Para monitoramento de performance e métricas do site.</span>
-              </li>
             </ul>
           </Section>
 

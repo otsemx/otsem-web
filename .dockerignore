@@ -1,31 +1,18 @@
-# Dependências
 node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Next.js
-.next/
-out/
-build/
-
-# Desenvolvimento
+.next
 .git
 .gitignore
-README.md
-.env*.local
-.vscode
-.idea
-
-# Testes
-coverage/
-.nyc_output/
-
-# Misc
+.env
+.env.*
+!.env.example
+.vercel
 .DS_Store
+attached_assets
+*.md
+coverage
+out
+build
 *.pem
-*.log
-
-# Fly.io
-fly.toml
+npm-debug.log*
+.pnpm-debug.log*
 .fly/

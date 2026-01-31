@@ -1,52 +1,51 @@
-# Dockerfile otimizado para Next.js no Fly.io
-FROM node:20-alpine AS base
-
-# Instalar dependências apenas quando necessário
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+# Stage 1: Install dependencies
+FROM oven/bun:1.3 AS deps
 WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
-# Copiar arquivos de dependências
-COPY package.json package-lock.json* ./
-RUN npm ci
-
-# Builder: construir o app
-FROM base AS builder
+# Stage 2: Build the Next.js app
+FROM oven/bun:1.3 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Desabilitar telemetria durante build
-ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_PUBLIC_ vars are inlined into client JS at build time
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_GATEWAY_URL
 
-# Build do Next.js
-RUN npm run build
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_GATEWAY_URL=$NEXT_PUBLIC_GATEWAY_URL
 
-# Runner: imagem final de produção
-FROM base AS runner
+RUN bun run build
+
+# Stage 3: Production runtime
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Copiar arquivos públicos
+# Copy standalone server
+COPY --from=builder /app/.next/standalone ./
+
+# Copy static assets (not included in standalone output)
+COPY --from=builder /app/.next/static ./.next/static
+
+# Copy public folder
 COPY --from=builder /app/public ./public
 
-# Copiar arquivos de build
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Copy i18n message files for next-intl runtime imports
+COPY --from=builder /app/messages ./messages
 
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
 EXPOSE 3000
-
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
