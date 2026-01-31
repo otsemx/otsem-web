@@ -1,182 +1,145 @@
 "use client";
 
 import * as React from "react";
-import { ShieldCheck, Loader2, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { ShieldCheck, Loader2, CheckCircle2, XCircle, ArrowRight, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import http from "@/lib/http";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
-import type { CpfVerificationStatus } from "@/types/customer";
+import http from "@/lib/http";
+import type { CustomerResponse, CpfVerificationStatus } from "@/types/customer";
 
 interface CpfVerificationStepProps {
-    customerType: "PF" | "PJ";
-    initialStatus: CpfVerificationStatus;
+    customer: CustomerResponse | null;
     onComplete: () => void;
+    onSkip: () => void;
 }
 
-export function CpfVerificationStep({
-    customerType,
-    initialStatus,
-    onComplete,
-}: CpfVerificationStepProps) {
-    const [status, setStatus] = React.useState<CpfVerificationStatus>(initialStatus);
-    const [triggering, setTriggering] = React.useState(false);
-    const docLabel = customerType === "PF" ? "CPF" : "CNPJ";
+export function CpfVerificationStep({ customer, onComplete, onSkip }: CpfVerificationStepProps) {
+    const [status, setStatus] = React.useState<CpfVerificationStatus>(
+        customer?.cpfVerificationStatus ?? "not_started"
+    );
+    const [starting, setStarting] = React.useState(false);
 
-    const triggerVerification = React.useCallback(async () => {
+    const startVerification = React.useCallback(async () => {
         try {
-            setTriggering(true);
-            await http.post("/customers/me/verify-cpf", {});
+            setStarting(true);
+            await http.post("/customers/me/verify-cpf");
             setStatus("pending");
         } catch {
-            toast.error(`Erro ao iniciar verificacao do ${docLabel}`);
+            toast.error("Erro ao iniciar verificacao. Tente novamente.");
         } finally {
-            setTriggering(false);
+            setStarting(false);
         }
-    }, [docLabel]);
+    }, []);
 
-    // Trigger verification if not started
+    // Auto-start verification if not_started
     React.useEffect(() => {
         if (status === "not_started") {
-            triggerVerification();
+            startVerification();
         }
-    }, [status, triggerVerification]);
+    }, [status, startVerification]);
 
-    // Poll for status updates
+    // Poll for status updates while pending
     React.useEffect(() => {
         if (status !== "pending") return;
 
         const interval = setInterval(async () => {
             try {
-                const res = await http.get<{ status: CpfVerificationStatus; name?: string }>(
-                    "/customers/me/cpf-status"
-                );
-                const newStatus = res.data.status;
-                if (newStatus === "verified") {
+                const res = await http.get<{ cpfVerificationStatus: CpfVerificationStatus } | { data: { cpfVerificationStatus: CpfVerificationStatus } }>("/customers/me/cpf-status");
+                const data = "data" in res.data && (res.data as { data?: { cpfVerificationStatus: CpfVerificationStatus } }).data
+                    ? (res.data as { data: { cpfVerificationStatus: CpfVerificationStatus } }).data
+                    : res.data as { cpfVerificationStatus: CpfVerificationStatus };
+
+                if (data.cpfVerificationStatus === "verified") {
                     setStatus("verified");
                     clearInterval(interval);
-                    setTimeout(() => onComplete(), 2000);
-                } else if (newStatus === "failed") {
+                } else if (data.cpfVerificationStatus === "failed") {
                     setStatus("failed");
                     clearInterval(interval);
                 }
             } catch {
-                // silently retry on next interval
+                // polling error, continue
             }
         }, 3000);
 
         return () => clearInterval(interval);
+    }, [status]);
+
+    React.useEffect(() => {
+        if (status === "verified") {
+            onComplete();
+        }
     }, [status, onComplete]);
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-        >
+        <div className="space-y-6">
             <div className="text-center space-y-2">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#6F00FF]/10">
-                    <ShieldCheck className="h-7 w-7 text-[#6F00FF]" />
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#6F00FF]/10">
+                    <ShieldCheck className="h-6 w-6 text-[#6F00FF]" />
                 </div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white">
-                    Verificacao de {docLabel}
+                <h2 className="text-xl font-bold text-foreground">
+                    Verificacao de CPF
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Estamos validando seu {docLabel} na Receita Federal
+                <p className="text-sm text-muted-foreground">
+                    Estamos validando seu CPF junto a Receita Federal.
                 </p>
             </div>
 
-            <div className="flex flex-col items-center space-y-6 py-4">
+            <div className="flex flex-col items-center gap-4 py-6">
                 {(status === "pending" || status === "not_started") && (
-                    <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        className="flex h-20 w-20 items-center justify-center rounded-full bg-[#6F00FF]/10"
-                    >
-                        <Loader2 className="h-10 w-10 text-[#6F00FF]" />
-                    </motion.div>
-                )}
-
-                {status === "pending" && (
-                    <div className="text-center space-y-2">
-                        <p className="text-base font-bold text-slate-900 dark:text-white">
-                            Verificando...
+                    <>
+                        <Loader2 className="h-10 w-10 animate-spin text-[#6F00FF]" />
+                        <p className="text-sm text-muted-foreground text-center">
+                            Verificando seus dados...
+                            <br />
+                            Isso pode levar alguns instantes.
                         </p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Isso pode levar alguns instantes. Aguarde.
-                        </p>
-                    </div>
+                    </>
                 )}
 
                 {status === "verified" && (
                     <>
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                            className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20"
-                        >
-                            <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
-                        </motion.div>
-                        <div className="text-center space-y-2">
-                            <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                                {docLabel} verificado com sucesso!
-                            </p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Redirecionando...
-                            </p>
-                        </div>
+                        <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+                        <p className="text-sm font-semibold text-emerald-600">
+                            CPF verificado com sucesso!
+                        </p>
                     </>
                 )}
 
                 {status === "failed" && (
                     <>
-                        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/20">
-                            <XCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
-                        </div>
-                        <div className="text-center space-y-2">
-                            <p className="text-base font-bold text-red-600 dark:text-red-400">
-                                Nao foi possivel verificar seu {docLabel}
-                            </p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Verifique se os dados estao corretos ou entre em contato com o suporte.
-                            </p>
-                        </div>
-                        <div className="flex gap-3">
-                            <Button
-                                onClick={triggerVerification}
-                                disabled={triggering}
-                                variant="outline"
-                                className="rounded-2xl"
-                            >
-                                {triggering ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                )}
-                                Tentar novamente
-                            </Button>
-                            <Button
-                                onClick={onComplete}
-                                className="rounded-2xl bg-[#6F00FF] hover:bg-[#6F00FF]/90 text-white"
-                            >
-                                Continuar mesmo assim
-                            </Button>
-                        </div>
+                        <XCircle className="h-10 w-10 text-red-500" />
+                        <p className="text-sm text-red-600 text-center">
+                            Nao foi possivel verificar seu CPF.
+                            <br />
+                            Verifique se seus dados estao corretos.
+                        </p>
+                        <Button
+                            onClick={startVerification}
+                            disabled={starting}
+                            variant="outline"
+                            className="rounded-xl"
+                        >
+                            {starting ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                                <RotateCw className="h-4 w-4 mr-2" />
+                            )}
+                            Tentar novamente
+                        </Button>
                     </>
                 )}
-
-                {status === "pending" && (
-                    <Button
-                        onClick={onComplete}
-                        variant="ghost"
-                        className="text-sm text-slate-500 hover:text-[#6F00FF]"
-                    >
-                        Pular e continuar
-                    </Button>
-                )}
             </div>
-        </motion.div>
+
+            {status === "pending" && (
+                <Button
+                    onClick={onSkip}
+                    variant="ghost"
+                    className="w-full rounded-xl text-muted-foreground"
+                >
+                    Continuar mesmo assim
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+            )}
+        </div>
     );
 }

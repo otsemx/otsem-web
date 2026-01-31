@@ -1,50 +1,49 @@
 "use client";
 
 import * as React from "react";
-import { Phone, Loader2, CheckCircle2 } from "lucide-react";
+import { Phone, Loader2, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
     InputOTP,
     InputOTPGroup,
     InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { Button } from "@/components/ui/button";
-import { formatPhone } from "@/lib/formatters";
-import http from "@/lib/http";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import http from "@/lib/http";
+import { formatPhone } from "@/lib/formatters";
+import type { CustomerResponse } from "@/types/customer";
 
 interface PhoneStepProps {
-    initialPhone?: string;
+    customer: CustomerResponse | null;
     onComplete: () => void;
 }
 
-export function PhoneStep({ initialPhone, onComplete }: PhoneStepProps) {
-    const [phone, setPhone] = React.useState(initialPhone ? formatPhone(initialPhone) : "");
+export function PhoneStep({ customer, onComplete }: PhoneStepProps) {
+    const [phone, setPhone] = React.useState(customer?.phone ?? "");
     const [codeSent, setCodeSent] = React.useState(false);
     const [code, setCode] = React.useState("");
-    const [countdown, setCountdown] = React.useState(0);
     const [sending, setSending] = React.useState(false);
     const [verifying, setVerifying] = React.useState(false);
-    const [error, setError] = React.useState("");
+    const [countdown, setCountdown] = React.useState(0);
 
     React.useEffect(() => {
         if (countdown <= 0) return;
-        const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
-        return () => clearInterval(timer);
+        const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+        return () => clearTimeout(timer);
     }, [countdown]);
 
+    const cleanPhone = phone.replace(/\D/g, "");
+    const phoneValid = cleanPhone.length === 11;
+
     async function sendCode() {
-        const cleanPhone = phone.replace(/\D/g, "");
-        if (cleanPhone.length < 10) {
-            setError("Informe um telefone valido");
+        if (!phoneValid) {
+            toast.error("Informe um telefone valido com DDD.");
             return;
         }
-
         try {
             setSending(true);
-            setError("");
             await http.post("/customers/me/phone/send-code", { phone: cleanPhone });
             setCodeSent(true);
             setCountdown(60);
@@ -58,15 +57,11 @@ export function PhoneStep({ initialPhone, onComplete }: PhoneStepProps) {
 
     async function verifyCode() {
         if (code.length !== 6) {
-            setError("Informe o codigo de 6 digitos");
+            toast.error("Informe o codigo de 6 digitos.");
             return;
         }
-
-        const cleanPhone = phone.replace(/\D/g, "");
-
         try {
             setVerifying(true);
-            setError("");
             await http.post("/customers/me/phone/verify-code", {
                 phone: cleanPhone,
                 code,
@@ -74,68 +69,57 @@ export function PhoneStep({ initialPhone, onComplete }: PhoneStepProps) {
             toast.success("Telefone verificado!");
             onComplete();
         } catch {
-            setError("Codigo invalido. Tente novamente.");
+            toast.error("Codigo invalido. Tente novamente.");
         } finally {
             setVerifying(false);
         }
     }
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-        >
+        <div className="space-y-6">
             <div className="text-center space-y-2">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#6F00FF]/10">
-                    <Phone className="h-7 w-7 text-[#6F00FF]" />
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#6F00FF]/10">
+                    <Phone className="h-6 w-6 text-[#6F00FF]" />
                 </div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white">
-                    Verificar telefone
+                <h2 className="text-xl font-bold text-foreground">
+                    Verifique seu telefone
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Enviaremos um codigo por SMS para confirmar seu numero
+                <p className="text-sm text-muted-foreground">
+                    Enviaremos um codigo SMS para confirmar seu numero.
                 </p>
             </div>
 
             <div className="space-y-4">
                 <div className="space-y-2">
-                    <Label className="text-sm font-bold text-slate-900 dark:text-white">
-                        Numero de celular
+                    <Label htmlFor="phone" className="text-sm font-semibold">
+                        Telefone
                     </Label>
-                    <div className="relative">
-                        <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <Input
-                            inputMode="tel"
-                            placeholder="(11) 99999-9999"
-                            value={phone}
-                            onChange={(e) => setPhone(formatPhone(e.target.value))}
-                            disabled={codeSent}
-                            className="h-12 rounded-2xl border-black/[0.05] dark:border-white/10 bg-white/60 dark:bg-white/5 pl-10 text-base"
-                        />
-                    </div>
+                    <Input
+                        id="phone"
+                        inputMode="numeric"
+                        placeholder="(11) 99999-9999"
+                        value={phone}
+                        onChange={(e) => setPhone(formatPhone(e.target.value))}
+                        disabled={codeSent}
+                        className="h-12 rounded-xl"
+                    />
                 </div>
 
                 {!codeSent ? (
                     <Button
                         onClick={sendCode}
-                        disabled={sending || phone.replace(/\D/g, "").length < 10}
-                        className="w-full h-12 rounded-2xl bg-[#6F00FF] hover:bg-[#6F00FF]/90 text-white font-bold text-sm"
+                        disabled={!phoneValid || sending}
+                        className="w-full h-12 rounded-xl bg-[#6F00FF] hover:bg-[#6F00FF]/90 text-white font-semibold"
                     >
                         {sending ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Enviando...
-                            </>
-                        ) : (
-                            "Enviar codigo"
-                        )}
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        Enviar codigo
                     </Button>
                 ) : (
                     <>
                         <div className="space-y-2">
-                            <Label className="text-sm font-bold text-slate-900 dark:text-white">
+                            <Label className="text-sm font-semibold">
                                 Codigo de verificacao
                             </Label>
                             <div className="flex justify-center">
@@ -145,52 +129,44 @@ export function PhoneStep({ initialPhone, onComplete }: PhoneStepProps) {
                                     onChange={setCode}
                                 >
                                     <InputOTPGroup>
-                                        <InputOTPSlot index={0} className="h-12 w-12 text-lg rounded-xl" />
-                                        <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
-                                        <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
-                                        <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
-                                        <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
-                                        <InputOTPSlot index={5} className="h-12 w-12 text-lg rounded-xl" />
+                                        <InputOTPSlot index={0} />
+                                        <InputOTPSlot index={1} />
+                                        <InputOTPSlot index={2} />
+                                        <InputOTPSlot index={3} />
+                                        <InputOTPSlot index={4} />
+                                        <InputOTPSlot index={5} />
                                     </InputOTPGroup>
                                 </InputOTP>
                             </div>
                         </div>
 
-                        {error && (
-                            <p className="text-sm text-red-500 text-center font-medium">{error}</p>
-                        )}
-
                         <Button
                             onClick={verifyCode}
-                            disabled={verifying || code.length !== 6}
-                            className="w-full h-12 rounded-2xl bg-[#6F00FF] hover:bg-[#6F00FF]/90 text-white font-bold text-sm"
+                            disabled={code.length !== 6 || verifying}
+                            className="w-full h-12 rounded-xl bg-[#6F00FF] hover:bg-[#6F00FF]/90 text-white font-semibold"
                         >
                             {verifying ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Verificando...
-                                </>
-                            ) : (
-                                <>
-                                    Verificar
-                                    <CheckCircle2 className="ml-2 h-4 w-4" />
-                                </>
-                            )}
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : null}
+                            Verificar
+                            <ArrowRight className="h-4 w-4 ml-2" />
                         </Button>
 
-                        <button
-                            type="button"
-                            onClick={sendCode}
-                            disabled={countdown > 0 || sending}
-                            className="w-full text-center text-sm text-slate-500 hover:text-[#6F00FF] disabled:opacity-50 font-medium transition"
-                        >
-                            {countdown > 0
-                                ? `Reenviar codigo em ${countdown}s`
-                                : "Reenviar codigo"}
-                        </button>
+                        <div className="text-center">
+                            <button
+                                type="button"
+                                onClick={sendCode}
+                                disabled={countdown > 0 || sending}
+                                className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition"
+                            >
+                                {countdown > 0
+                                    ? `Reenviar em ${countdown}s`
+                                    : "Reenviar codigo"}
+                            </button>
+                        </div>
                     </>
                 )}
             </div>
-        </motion.div>
+        </div>
     );
 }

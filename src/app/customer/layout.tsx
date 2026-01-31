@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { Protected } from "@/components/auth/Protected";
 import { ThemeToggle } from "@/components/theme-toggle";
 import http from "@/lib/http";
+import type { CustomerResponse } from "@/types/customer";
 
 import {
     Sidebar,
@@ -53,30 +54,6 @@ import { WithdrawModal } from "@/components/modals/withdraw-modal";
 import { SellUsdtModal } from "@/components/modals/sell-usdt-modal";
 import SendUsdtModal from "@/components/modals/send-usdt-modal";
 import { useUiModals } from "@/stores/ui-modals";
-
-type CustomerAddress = {
-    zipCode: string;
-    street: string;
-    number?: string;
-    complement?: string;
-    neighborhood: string;
-    cityIbgeCode: string | number;
-    city?: string;
-    state?: string;
-};
-
-type CustomerResponse = {
-    id: string;
-    type: "PF" | "PJ";
-    accountStatus: string;
-    name?: string;
-    cpf?: string;
-    birthday?: string;
-    phone?: string;
-    email: string;
-    address?: CustomerAddress;
-    createdAt: string;
-};
 
 const baseMenuGroups = [
     {
@@ -334,7 +311,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                     setKycStatus((customer as CustomerResponse).accountStatus);
                 }
 
-                const c = customer as CustomerResponse & { onboardingCompleted?: boolean };
+                const c = customer as CustomerResponse;
                 setOnboardingCompleted(c.onboardingCompleted ?? true);
             } catch (err) {
                 console.error("Erro ao buscar dados do cliente:", err);

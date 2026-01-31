@@ -1,117 +1,105 @@
 "use client";
 
 import * as React from "react";
-import { MapPin, Calendar, Loader2, ArrowRight } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { UserRound, Loader2, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { formatCep, formatDate, parseDateBR } from "@/lib/formatters";
-import { fetchAddressByCep } from "@/lib/viacep";
-import http from "@/lib/http";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
-import type { CustomerAddress } from "@/types/customer";
+import http from "@/lib/http";
+import { formatDate, parseDateBR } from "@/lib/formatters";
+import { formatCep } from "@/lib/formatters";
+import { fetchAddressByCep } from "@/lib/viacep";
+import type { CustomerResponse } from "@/types/customer";
+
+const schema = z.object({
+    birthday: z.string().min(10, "Informe a data de nascimento"),
+    zipCode: z.string().min(9, "CEP invalido"),
+    street: z.string().min(1, "Informe o logradouro"),
+    number: z.string().optional(),
+    complement: z.string().optional(),
+    neighborhood: z.string().min(1, "Informe o bairro"),
+    city: z.string().min(1, "Informe a cidade"),
+    state: z.string().min(2, "Informe o estado"),
+    cityIbgeCode: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof schema>;
 
 interface PersonalDataStepProps {
-    initialBirthday?: string;
-    initialAddress?: CustomerAddress;
+    customer: CustomerResponse | null;
     onComplete: () => void;
 }
 
-export function PersonalDataStep({
-    initialBirthday,
-    initialAddress,
-    onComplete,
-}: PersonalDataStepProps) {
-    const [birthday, setBirthday] = React.useState(() => {
-        if (!initialBirthday) return "";
-        const [y, m, d] = initialBirthday.split("-");
-        return d && m && y ? `${d}/${m}/${y}` : "";
-    });
-    const [cep, setCep] = React.useState(initialAddress?.zipCode || "");
-    const [street, setStreet] = React.useState(initialAddress?.street || "");
-    const [number, setNumber] = React.useState(initialAddress?.number || "");
-    const [complement, setComplement] = React.useState(initialAddress?.complement || "");
-    const [neighborhood, setNeighborhood] = React.useState(initialAddress?.neighborhood || "");
-    const [city, setCity] = React.useState(initialAddress?.city || "");
-    const [state, setState] = React.useState(initialAddress?.state || "");
-    const [cityIbgeCode, setCityIbgeCode] = React.useState(
-        initialAddress?.cityIbgeCode?.toString() || ""
-    );
-
-    const [loadingCep, setLoadingCep] = React.useState(false);
+export function PersonalDataStep({ customer, onComplete }: PersonalDataStepProps) {
     const [submitting, setSubmitting] = React.useState(false);
-    const [errors, setErrors] = React.useState<Record<string, string>>({});
+    const [loadingCep, setLoadingCep] = React.useState(false);
 
-    async function handleCepChange(value: string) {
-        const formatted = formatCep(value);
-        setCep(formatted);
+    const form = useForm<FormValues>({
+        resolver: zodResolver(schema),
+        defaultValues: {
+            birthday: customer?.birthday ?? "",
+            zipCode: customer?.address?.zipCode ?? "",
+            street: customer?.address?.street ?? "",
+            number: customer?.address?.number ?? "",
+            complement: customer?.address?.complement ?? "",
+            neighborhood: customer?.address?.neighborhood ?? "",
+            city: customer?.address?.city ?? "",
+            state: customer?.address?.state ?? "",
+            cityIbgeCode: String(customer?.address?.cityIbgeCode ?? ""),
+        },
+    });
 
-        const clean = value.replace(/\D/g, "");
-        if (clean.length === 8) {
-            setLoadingCep(true);
-            try {
-                const data = await fetchAddressByCep(clean);
-                if (data) {
-                    setStreet(data.logradouro);
-                    setNeighborhood(data.bairro);
-                    setCity(data.localidade);
-                    setState(data.uf);
-                    setCityIbgeCode(data.ibge);
-                } else {
-                    toast.error("CEP nao encontrado");
-                }
-            } catch {
-                toast.error("Erro ao buscar CEP");
-            } finally {
+    const zipCode = form.watch("zipCode");
+
+    React.useEffect(() => {
+        const clean = zipCode?.replace(/\D/g, "") ?? "";
+        if (clean.length !== 8) return;
+
+        let cancelled = false;
+        setLoadingCep(true);
+
+        fetchAddressByCep(clean).then((data) => {
+            if (cancelled || !data) {
                 setLoadingCep(false);
+                return;
             }
-        }
-    }
+            form.setValue("street", data.logradouro);
+            form.setValue("neighborhood", data.bairro);
+            form.setValue("city", data.localidade);
+            form.setValue("state", data.uf);
+            form.setValue("cityIbgeCode", data.ibge);
+            setLoadingCep(false);
+        }).catch(() => {
+            if (!cancelled) setLoadingCep(false);
+        });
 
-    function validate(): boolean {
-        const errs: Record<string, string> = {};
+        return () => { cancelled = true; };
+    }, [zipCode, form]);
 
-        const isoDate = parseDateBR(birthday);
+    async function onSubmit(values: FormValues) {
+        const isoDate = parseDateBR(values.birthday);
         if (!isoDate) {
-            errs.birthday = "Data de nascimento invalida";
-        } else {
-            const date = new Date(isoDate);
-            const now = new Date();
-            const age = now.getFullYear() - date.getFullYear();
-            if (age < 18) errs.birthday = "Voce precisa ter pelo menos 18 anos";
-            if (age > 120) errs.birthday = "Data de nascimento invalida";
+            form.setError("birthday", { message: "Data invalida" });
+            return;
         }
-
-        if (cep.replace(/\D/g, "").length !== 8) errs.cep = "CEP obrigatorio";
-        if (!street.trim()) errs.street = "Logradouro obrigatorio";
-        if (!number.trim()) errs.number = "Numero obrigatorio";
-        if (!neighborhood.trim()) errs.neighborhood = "Bairro obrigatorio";
-        if (!city.trim()) errs.city = "Cidade obrigatoria";
-        if (!state.trim()) errs.state = "Estado obrigatorio";
-
-        setErrors(errs);
-        return Object.keys(errs).length === 0;
-    }
-
-    async function handleSubmit() {
-        if (!validate()) return;
-
-        const isoDate = parseDateBR(birthday)!;
 
         try {
             setSubmitting(true);
             await http.patch("/customers/me/onboarding", {
                 birthday: isoDate,
                 address: {
-                    zipCode: cep.replace(/\D/g, ""),
-                    street,
-                    number,
-                    complement: complement || undefined,
-                    neighborhood,
-                    city,
-                    state,
-                    cityIbgeCode: cityIbgeCode || "0",
+                    zipCode: values.zipCode.replace(/\D/g, ""),
+                    street: values.street,
+                    number: values.number || undefined,
+                    complement: values.complement || undefined,
+                    neighborhood: values.neighborhood,
+                    city: values.city,
+                    state: values.state,
+                    cityIbgeCode: values.cityIbgeCode || undefined,
                 },
             });
             toast.success("Dados salvos!");
@@ -124,180 +112,162 @@ export function PersonalDataStep({
     }
 
     return (
-        <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-        >
+        <div className="space-y-6">
             <div className="text-center space-y-2">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#6F00FF]/10">
-                    <MapPin className="h-7 w-7 text-[#6F00FF]" />
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#6F00FF]/10">
+                    <UserRound className="h-6 w-6 text-[#6F00FF]" />
                 </div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                <h2 className="text-xl font-bold text-foreground">
                     Dados pessoais
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Complete seu perfil com data de nascimento e endereco
+                <p className="text-sm text-muted-foreground">
+                    Informe sua data de nascimento e endereco.
                 </p>
             </div>
 
-            <div className="space-y-4">
-                {/* Birthday */}
-                <div className="space-y-1.5">
-                    <Label className="text-sm font-bold text-slate-900 dark:text-white">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="birthday" className="text-sm font-semibold">
                         Data de nascimento
                     </Label>
-                    <div className="relative">
-                        <Calendar className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <Input
-                            inputMode="numeric"
-                            placeholder="DD/MM/AAAA"
-                            value={birthday}
-                            onChange={(e) => setBirthday(formatDate(e.target.value))}
-                            className="h-12 rounded-2xl border-black/[0.05] dark:border-white/10 bg-white/60 dark:bg-white/5 pl-10 text-base"
-                        />
-                    </div>
-                    {errors.birthday && (
-                        <p className="text-xs text-red-500 font-medium">{errors.birthday}</p>
+                    <Input
+                        id="birthday"
+                        inputMode="numeric"
+                        placeholder="DD/MM/AAAA"
+                        value={form.watch("birthday")}
+                        onChange={(e) =>
+                            form.setValue("birthday", formatDate(e.target.value), { shouldValidate: true })
+                        }
+                        className="h-12 rounded-xl"
+                    />
+                    {form.formState.errors.birthday && (
+                        <p className="text-xs text-red-500">{form.formState.errors.birthday.message}</p>
                     )}
                 </div>
 
-                {/* CEP */}
-                <div className="space-y-1.5">
-                    <Label className="text-sm font-bold text-slate-900 dark:text-white">
+                <div className="space-y-2">
+                    <Label htmlFor="zipCode" className="text-sm font-semibold">
                         CEP
                     </Label>
                     <div className="relative">
-                        <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <Input
+                            id="zipCode"
                             inputMode="numeric"
                             placeholder="00000-000"
-                            value={cep}
-                            onChange={(e) => handleCepChange(e.target.value)}
-                            className="h-12 rounded-2xl border-black/[0.05] dark:border-white/10 bg-white/60 dark:bg-white/5 pl-10 text-base"
+                            value={form.watch("zipCode")}
+                            onChange={(e) =>
+                                form.setValue("zipCode", formatCep(e.target.value), { shouldValidate: true })
+                            }
+                            className="h-12 rounded-xl"
                         />
                         {loadingCep && (
-                            <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-400" />
+                            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
                         )}
                     </div>
-                    {errors.cep && (
-                        <p className="text-xs text-red-500 font-medium">{errors.cep}</p>
+                    {form.formState.errors.zipCode && (
+                        <p className="text-xs text-red-500">{form.formState.errors.zipCode.message}</p>
                     )}
                 </div>
 
-                {/* Street + Number */}
-                <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2 space-y-1.5">
-                        <Label className="text-sm font-bold text-slate-900 dark:text-white">
-                            Logradouro
-                        </Label>
-                        <Input
-                            placeholder="Rua, Avenida..."
-                            value={street}
-                            onChange={(e) => setStreet(e.target.value)}
-                            className="h-12 rounded-2xl border-black/[0.05] dark:border-white/10 bg-white/60 dark:bg-white/5 text-base"
-                        />
-                        {errors.street && (
-                            <p className="text-xs text-red-500 font-medium">{errors.street}</p>
-                        )}
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-sm font-bold text-slate-900 dark:text-white">
+                <div className="space-y-2">
+                    <Label htmlFor="street" className="text-sm font-semibold">
+                        Logradouro
+                    </Label>
+                    <Input
+                        id="street"
+                        placeholder="Rua, Avenida..."
+                        {...form.register("street")}
+                        className="h-12 rounded-xl"
+                    />
+                    {form.formState.errors.street && (
+                        <p className="text-xs text-red-500">{form.formState.errors.street.message}</p>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                        <Label htmlFor="number" className="text-sm font-semibold">
                             Numero
                         </Label>
                         <Input
+                            id="number"
                             placeholder="123"
-                            value={number}
-                            onChange={(e) => setNumber(e.target.value)}
-                            className="h-12 rounded-2xl border-black/[0.05] dark:border-white/10 bg-white/60 dark:bg-white/5 text-base"
+                            {...form.register("number")}
+                            className="h-12 rounded-xl"
                         />
-                        {errors.number && (
-                            <p className="text-xs text-red-500 font-medium">{errors.number}</p>
-                        )}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="complement" className="text-sm font-semibold">
+                            Complemento
+                        </Label>
+                        <Input
+                            id="complement"
+                            placeholder="Apto, Bloco..."
+                            {...form.register("complement")}
+                            className="h-12 rounded-xl"
+                        />
                     </div>
                 </div>
 
-                {/* Complement */}
-                <div className="space-y-1.5">
-                    <Label className="text-sm font-bold text-slate-900 dark:text-white">
-                        Complemento <span className="text-slate-400 font-normal">(opcional)</span>
-                    </Label>
-                    <Input
-                        placeholder="Apto, Bloco..."
-                        value={complement}
-                        onChange={(e) => setComplement(e.target.value)}
-                        className="h-12 rounded-2xl border-black/[0.05] dark:border-white/10 bg-white/60 dark:bg-white/5 text-base"
-                    />
-                </div>
-
-                {/* Neighborhood */}
-                <div className="space-y-1.5">
-                    <Label className="text-sm font-bold text-slate-900 dark:text-white">
+                <div className="space-y-2">
+                    <Label htmlFor="neighborhood" className="text-sm font-semibold">
                         Bairro
                     </Label>
                     <Input
+                        id="neighborhood"
                         placeholder="Bairro"
-                        value={neighborhood}
-                        onChange={(e) => setNeighborhood(e.target.value)}
-                        className="h-12 rounded-2xl border-black/[0.05] dark:border-white/10 bg-white/60 dark:bg-white/5 text-base"
+                        {...form.register("neighborhood")}
+                        className="h-12 rounded-xl"
                     />
-                    {errors.neighborhood && (
-                        <p className="text-xs text-red-500 font-medium">{errors.neighborhood}</p>
+                    {form.formState.errors.neighborhood && (
+                        <p className="text-xs text-red-500">{form.formState.errors.neighborhood.message}</p>
                     )}
                 </div>
 
-                {/* City + State */}
                 <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2 space-y-1.5">
-                        <Label className="text-sm font-bold text-slate-900 dark:text-white">
+                    <div className="col-span-2 space-y-2">
+                        <Label htmlFor="city" className="text-sm font-semibold">
                             Cidade
                         </Label>
                         <Input
+                            id="city"
                             placeholder="Cidade"
-                            value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                            className="h-12 rounded-2xl border-black/[0.05] dark:border-white/10 bg-white/60 dark:bg-white/5 text-base"
+                            {...form.register("city")}
+                            className="h-12 rounded-xl"
                         />
-                        {errors.city && (
-                            <p className="text-xs text-red-500 font-medium">{errors.city}</p>
+                        {form.formState.errors.city && (
+                            <p className="text-xs text-red-500">{form.formState.errors.city.message}</p>
                         )}
                     </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-sm font-bold text-slate-900 dark:text-white">
+                    <div className="space-y-2">
+                        <Label htmlFor="state" className="text-sm font-semibold">
                             UF
                         </Label>
                         <Input
+                            id="state"
                             placeholder="SP"
                             maxLength={2}
-                            value={state}
-                            onChange={(e) => setState(e.target.value.toUpperCase())}
-                            className="h-12 rounded-2xl border-black/[0.05] dark:border-white/10 bg-white/60 dark:bg-white/5 text-base"
+                            {...form.register("state")}
+                            className="h-12 rounded-xl"
                         />
-                        {errors.state && (
-                            <p className="text-xs text-red-500 font-medium">{errors.state}</p>
+                        {form.formState.errors.state && (
+                            <p className="text-xs text-red-500">{form.formState.errors.state.message}</p>
                         )}
                     </div>
                 </div>
 
                 <Button
-                    onClick={handleSubmit}
+                    type="submit"
                     disabled={submitting}
-                    className="w-full h-12 rounded-2xl bg-[#6F00FF] hover:bg-[#6F00FF]/90 text-white font-bold text-sm"
+                    className="w-full h-12 rounded-xl bg-[#6F00FF] hover:bg-[#6F00FF]/90 text-white font-semibold"
                 >
                     {submitting ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Salvando...
-                        </>
-                    ) : (
-                        <>
-                            Continuar
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                        </>
-                    )}
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Continuar
+                    <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
-            </div>
-        </motion.div>
+            </form>
+        </div>
     );
 }

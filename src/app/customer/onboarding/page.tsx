@@ -3,168 +3,157 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, LogOut } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { useAuth } from "@/contexts/auth-context";
+import { Loader2 } from "lucide-react";
 import http from "@/lib/http";
 import type { CustomerResponse } from "@/types/customer";
+
 import { PhoneStep } from "./steps/phone-step";
 import { PersonalDataStep } from "./steps/personal-data-step";
 import { CpfVerificationStep } from "./steps/cpf-verification-step";
 import { SuccessStep } from "./steps/success-step";
-import { AnimatePresence } from "framer-motion";
 
-type OnboardingStep = "phone" | "personal-data" | "cpf-verification" | "success";
+type Step = "phone" | "personal" | "cpf" | "success";
 
-const STEP_ORDER: OnboardingStep[] = ["phone", "personal-data", "cpf-verification", "success"];
-const STEP_LABELS: Record<OnboardingStep, string> = {
-    phone: "Telefone",
-    "personal-data": "Dados pessoais",
-    "cpf-verification": "Verificacao",
-    success: "Concluido",
-};
+const STEP_ORDER: Step[] = ["phone", "personal", "cpf", "success"];
 
-function determineInitialStep(customer: CustomerResponse): OnboardingStep {
+function ProgressBar({ currentStep }: { currentStep: Step }) {
+    const idx = STEP_ORDER.indexOf(currentStep);
+    const total = STEP_ORDER.length;
+
+    return (
+        <div className="flex items-center gap-2 w-full max-w-xs mx-auto">
+            {STEP_ORDER.map((step, i) => (
+                <div
+                    key={step}
+                    className={`h-1.5 flex-1 rounded-full transition-colors ${
+                        i <= idx
+                            ? "bg-[#6F00FF]"
+                            : "bg-muted"
+                    }`}
+                />
+            ))}
+            <span className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
+                {idx + 1}/{total}
+            </span>
+        </div>
+    );
+}
+
+function determineStep(customer: CustomerResponse): Step {
     if (customer.onboardingCompleted) return "success";
     if (!customer.phoneVerified) return "phone";
-    if (!customer.birthday || !customer.address) return "personal-data";
-    return "cpf-verification";
+    if (!customer.birthday || !customer.address) return "personal";
+    if (customer.cpfVerificationStatus !== "verified") return "cpf";
+    return "success";
 }
 
 export default function OnboardingPage() {
     const router = useRouter();
-    const { user, logout } = useAuth();
-    const [loading, setLoading] = React.useState(true);
     const [customer, setCustomer] = React.useState<CustomerResponse | null>(null);
-    const [currentStep, setCurrentStep] = React.useState<OnboardingStep>("phone");
+    const [currentStep, setCurrentStep] = React.useState<Step>("phone");
+    const [loading, setLoading] = React.useState(true);
+
+    const fetchCustomer = React.useCallback(async () => {
+        try {
+            const res = await http.get<{ data: CustomerResponse } | CustomerResponse>("/customers/me");
+            const data = "data" in res.data && (res.data as { data?: CustomerResponse }).data
+                ? (res.data as { data: CustomerResponse }).data
+                : res.data as CustomerResponse;
+            setCustomer(data);
+            return data;
+        } catch (err) {
+            console.error("Erro ao buscar dados do cliente:", err);
+            return null;
+        }
+    }, []);
 
     React.useEffect(() => {
-        async function loadCustomer() {
-            try {
-                const res = await http.get<CustomerResponse | { data: CustomerResponse }>(
-                    "/customers/me"
-                );
-                const raw = res.data as Record<string, unknown>;
-                const data =
-                    "data" in raw && raw.data
-                        ? (raw.data as CustomerResponse)
-                        : (raw as unknown as CustomerResponse);
-                setCustomer(data);
-
-                if (data.onboardingCompleted) {
+        async function init() {
+            const data = await fetchCustomer();
+            if (data) {
+                const step = determineStep(data);
+                if (step === "success" && data.onboardingCompleted) {
                     router.replace("/customer/dashboard");
                     return;
                 }
-
-                setCurrentStep(determineInitialStep(data));
-            } catch {
-                // If customer doesn't exist yet, start from the beginning
-                setCurrentStep("phone");
-            } finally {
-                setLoading(false);
+                setCurrentStep(step);
             }
+            setLoading(false);
         }
+        init();
+    }, [fetchCustomer, router]);
 
-        if (user) {
-            loadCustomer();
-        }
-    }, [user, router]);
+    async function handleStepComplete() {
+        const data = await fetchCustomer();
+        if (!data) return;
 
-    function advanceToNextStep() {
-        const currentIndex = STEP_ORDER.indexOf(currentStep);
-        if (currentIndex < STEP_ORDER.length - 1) {
-            setCurrentStep(STEP_ORDER[currentIndex + 1]);
+        const nextStep = determineStep(data);
+        if (nextStep === "success" && data.onboardingCompleted) {
+            setCurrentStep("success");
+        } else {
+            setCurrentStep(nextStep);
         }
     }
 
-    const stepIndex = STEP_ORDER.indexOf(currentStep);
+    function goToNext() {
+        const idx = STEP_ORDER.indexOf(currentStep);
+        if (idx < STEP_ORDER.length - 1) {
+            setCurrentStep(STEP_ORDER[idx + 1]);
+        }
+    }
 
     if (loading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin text-[#6F00FF]" />
+            <div className="flex min-h-screen items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
-            {/* Header */}
-            <header className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-                <div className="flex items-center gap-3">
-                    <Image
-                        src="/images/logo.png"
-                        alt="OtsemPay"
-                        width={32}
-                        height={32}
-                        className="rounded-lg"
-                    />
-                    <span className="text-lg font-bold">
-                        <span className="text-amber-500 dark:text-amber-400">Otsem</span>
-                        <span className="text-[#6F00FF]">Pay</span>
-                    </span>
-                </div>
-                <button
-                    onClick={logout}
-                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-red-500 transition font-medium"
-                >
-                    <LogOut className="h-4 w-4" />
-                    Sair
-                </button>
+            <header className="flex items-center justify-center border-b border-border/50 px-4 py-4">
+                <Image
+                    src="/images/logo.png"
+                    alt="OtsemPay"
+                    width={36}
+                    height={36}
+                    className="rounded-lg"
+                />
+                <span className="ml-3 text-lg font-bold">
+                    <span className="text-amber-500 dark:text-amber-400">Otsem</span>
+                    <span className="text-[#6F00FF]">Pay</span>
+                </span>
             </header>
 
-            {/* Content */}
-            <div className="flex flex-1 items-start justify-center px-4 py-8 md:py-12">
-                <div className="w-full max-w-md space-y-6">
-                    {/* Step indicator */}
-                    {currentStep !== "success" && (
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="font-bold text-slate-900 dark:text-white">
-                                    Etapa {stepIndex + 1} de {STEP_ORDER.length - 1}
-                                </span>
-                                <span className="text-slate-500 dark:text-slate-400">
-                                    {STEP_LABELS[currentStep]}
-                                </span>
-                            </div>
-                            <Progress
-                                value={(stepIndex / (STEP_ORDER.length - 1)) * 100}
-                                className="h-2"
-                            />
-                        </div>
-                    )}
-
-                    {/* Step content */}
-                    <div className="rounded-3xl border border-border/50 bg-card p-6 shadow-sm">
-                        <AnimatePresence mode="wait">
-                            {currentStep === "phone" && (
-                                <PhoneStep
-                                    key="phone"
-                                    initialPhone={customer?.phone}
-                                    onComplete={advanceToNextStep}
-                                />
-                            )}
-                            {currentStep === "personal-data" && (
-                                <PersonalDataStep
-                                    key="personal-data"
-                                    initialBirthday={customer?.birthday}
-                                    initialAddress={customer?.address}
-                                    onComplete={advanceToNextStep}
-                                />
-                            )}
-                            {currentStep === "cpf-verification" && (
-                                <CpfVerificationStep
-                                    key="cpf-verification"
-                                    customerType={customer?.type || "PF"}
-                                    initialStatus={customer?.cpfVerificationStatus || "not_started"}
-                                    onComplete={advanceToNextStep}
-                                />
-                            )}
-                            {currentStep === "success" && (
-                                <SuccessStep key="success" />
-                            )}
-                        </AnimatePresence>
+            <div className="flex-1 flex flex-col items-center px-4 py-8">
+                <div className="w-full max-w-md">
+                    <div className="mb-8">
+                        <ProgressBar currentStep={currentStep} />
                     </div>
+
+                    {currentStep === "phone" && (
+                        <PhoneStep
+                            customer={customer}
+                            onComplete={handleStepComplete}
+                        />
+                    )}
+                    {currentStep === "personal" && (
+                        <PersonalDataStep
+                            customer={customer}
+                            onComplete={handleStepComplete}
+                        />
+                    )}
+                    {currentStep === "cpf" && (
+                        <CpfVerificationStep
+                            customer={customer}
+                            onComplete={handleStepComplete}
+                            onSkip={goToNext}
+                        />
+                    )}
+                    {currentStep === "success" && (
+                        <SuccessStep />
+                    )}
                 </div>
             </div>
         </div>
