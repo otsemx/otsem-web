@@ -122,7 +122,7 @@ The app uses **next-themes** for light/dark mode switching:
 - **Didit**: AI-powered identity verification service for KYC. Simplified flow - user clicks "Iniciar Verificação" and is redirected to Didit for document + selfie verification. Backend endpoints: `POST /customers/:id/kyc/request` creates session and returns verification URL. Webhooks handled by backend at `/didit/webhooks/verification`. The KYC page (`/customer/kyc`) shows current status and allows starting verification directly without pre-filling forms.
 - **ViaCEP**: Brazilian postal code lookup API (`https://viacep.com.br/ws/`) for address autocomplete in KYC forms.
 - **Yahoo Finance**: USDT/BRL rate fetching via `/api/usdt-rate` API route that proxies to Yahoo Finance.
-- **Vercel Analytics**: Client-side analytics integration via `@vercel/analytics`.
+- **Fly.io**: Production deployment platform with Docker-based builds.
 
 ### UI Libraries
 - **Lucide React**: Icon library used throughout the application.

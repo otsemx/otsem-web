@@ -3,7 +3,6 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
-import vercel from "@vercel/style-guide/eslint/next";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,8 +11,7 @@ const compat = new FlatCompat({ baseDirectory: __dirname });
 
 const project = "./tsconfig.json";
 
-const vercelConfigs = Array.isArray(vercel) ? vercel : [vercel];
-const vercelFlat = vercelConfigs.flatMap((cfg) => compat.config(cfg));
+const nextConfigs = compat.extends("next/core-web-vitals", "next/typescript");
 
 const config = [
   {
@@ -27,7 +25,7 @@ const config = [
     ],
   },
 
-  ...vercelFlat.map((cfg) => ({
+  ...nextConfigs.map((cfg) => ({
     ...cfg,
     languageOptions: {
       ...cfg.languageOptions,
